@@ -67,6 +67,48 @@ export default class MyPlugin extends Plugin {
 		);
 	}
 
+	// sibNodes must have x,y,height,width attributes
+	reflow(parentNode, sibNodes) {
+		const ROW_GAP = 20
+		const COLUMN_GAP = 200
+
+		const bbox = sibNodes.reduce((prev, node, idx) => {
+			return idx > 0
+				?	{
+					height: prev.height + node.height + ROW_GAP,
+					heightNodes: prev.heightNodes.concat(node.height),
+				}
+				:	{
+					height: prev.height + node.height,
+					heightNodes: prev.heightNodes.concat(node.height),
+				}
+		}, {
+			height: 0,
+			heightNodes: [],
+		})
+
+		const top = parentNode.y + parentNode.height * 0.5 - bbox.height * 0.5
+
+		console.log(bbox)
+
+		const getSum = (arr: number[]) => arr.reduce((sum, cur) => sum + cur, 0)
+
+		sibNodes.forEach((node, i) => {
+			if (i === 0) {
+				node.moveTo({
+					x: parentNode.width + parentNode.x + COLUMN_GAP,
+					y: top,
+				})
+				return
+			}
+
+			node.moveTo({
+				x: parentNode.width + parentNode.x + COLUMN_GAP,
+				y: top + ROW_GAP * i + getSum(bbox.heightNodes.slice(0, i))
+			})
+		})
+	}
+
 	async onload() {
 		await this.loadSettings();
 
@@ -104,6 +146,8 @@ export default class MyPlugin extends Plugin {
 				height,
 			} = parentNode
 
+			const sibNodes = this.canvas.getEdgesForNode(parentNode).map(e => e.to.node)
+
 			const childNode = this.canvas.createTextNode({
 				pos: {
 					x: x + width + 200,
@@ -122,8 +166,6 @@ export default class MyPlugin extends Plugin {
 				save: true,
 			})
 
-			this.canvas.addNode(childNode)
-
 			const data = this.canvas.getData()
 
 			this.canvas.importData({
@@ -140,7 +182,18 @@ export default class MyPlugin extends Plugin {
 				"nodes": data.nodes,
 			})
 
-			this.canvas.requestFrame();
+			console.log(parentNode)
+			console.log(sibNodes)
+			console.log('childNode: ', childNode)
+
+			this.reflow(parentNode, sibNodes.concat(childNode))
+
+
+
+			// this.canvas.addNode(childNode)
+
+
+			// this.canvas.requestFrame();
 		})
 
 		this.hShortcut = this.app.scope.register([], 'h', () => {
