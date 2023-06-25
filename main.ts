@@ -21,6 +21,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default'
 }
 
+const MACRO_TASK_DELAY = 50
+
 const VIEW_TYPE_EXAMPLE = "example-view";
 
 class ExampleView extends ItemView {
@@ -52,6 +54,7 @@ export default class MyPlugin extends Plugin {
 	canvas: any;
 	hShortcut: KeymapEventHandler;
 	tabShortcut: KeymapEventHandler;
+	spaceShortcut: KeymapEventHandler;
 	cShortcut: KeymapEventHandler;
 
 	async activateView() {
@@ -89,8 +92,6 @@ export default class MyPlugin extends Plugin {
 
 		const top = parentNode.y + parentNode.height * 0.5 - bbox.height * 0.5
 
-		console.log(bbox)
-
 		const getSum = (arr: number[]) => arr.reduce((sum, cur) => sum + cur, 0)
 
 		sibNodes.forEach((node, i) => {
@@ -108,6 +109,28 @@ export default class MyPlugin extends Plugin {
 			})
 		})
 	}
+
+	getSingleSelection(): OMM.Node | null {
+		const selections = this.canvas.selection
+
+		if (selections === undefined) return null
+
+		if (selections.size !== 1) {
+			console.error(`You are using \`getSingleSelection\` function! Expect selected node \`1\`, you select \`${selections.size}\``)
+			return null
+		}
+
+		return selections.values().next().value
+	}
+
+	zoomToNode(node: OMM.Node) {
+		this.canvas.selectOnly(node)
+		this.canvas.zoomToSelection()
+
+		// 魔法打败魔法
+		setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+	}
+
 
 	async onload() {
 		await this.loadSettings();
@@ -133,20 +156,36 @@ export default class MyPlugin extends Plugin {
 			return t.join("")
 		}
 
+		this.spaceShortcut = this.app.scope.register([], ' ', () => {
+			const selection = this.getSingleSelection()
+			if (selection === null || selection.isEditing) return
+			selection.startEditing();
+			this.canvas.zoomToSelection();
+		})
+
 		this.tabShortcut = this.app.scope.register([], 'Tab', () => {
 			const selections = this.canvas.selection
 			if (selections.size !== 1) return
 
-			const parentNode = selections.values().next().value
+			const selectionNode: OMM.Node = selections.values().next().value
 
 			const {
 				x,
 				y,
 				width,
 				height,
-			} = parentNode
+			} = selectionNode
 
-			const sibNodes = this.canvas.getEdgesForNode(parentNode).map(e => e.to.node)
+			// node with from and to attrs we called `Edge`
+			// node without from and to but has x,y,width,height attrs we called `Node`
+			const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
+
+
+			// return this.edgeFrom.getArray(e).concat(this.edgeTo.getArray(e))
+			const sibNodes = this.canvas
+				.getEdgesForNode(selectionNode)
+				.filter(rightSideNodeFilter)
+				.map((node: OMM.Edge) => node.to.node)
 
 			const childNode = this.canvas.createTextNode({
 				pos: {
@@ -173,7 +212,7 @@ export default class MyPlugin extends Plugin {
 					...data.edges,
 					{
 						"id": random(6),
-						"fromNode": parentNode.id,
+						"fromNode": selectionNode.id,
 						"fromSide": 'right',
 						"toNode": childNode.id,
 						"toSide": 'left',
@@ -182,22 +221,16 @@ export default class MyPlugin extends Plugin {
 				"nodes": data.nodes,
 			})
 
-			console.log(parentNode)
-			console.log(sibNodes)
-			console.log('childNode: ', childNode)
+			this.reflow(selectionNode, sibNodes.concat(childNode))
 
-			this.reflow(parentNode, sibNodes.concat(childNode))
-
-
-
-			// this.canvas.addNode(childNode)
-
-
-			// this.canvas.requestFrame();
+			this.zoomToNode(childNode)
 		})
 
 		this.hShortcut = this.app.scope.register([], 'h', () => {
-			console.log('canvas => \n\n', this.canvas)
+			console.log('canvas:\n', this.canvas)
+
+			const selections = this.canvas.selection.values().next().value
+			console.log('selections:\n', selections)
 		})
 
 		this.addRibbonIcon("dice", "Activate view", () => {
@@ -234,6 +267,7 @@ export default class MyPlugin extends Plugin {
 		this.app.scope.unregister(this.hShortcut)
 		this.app.scope.unregister(this.tabShortcut)
 		this.app.scope.unregister(this.cShortcut)
+		this.app.scope.unregister(this.spaceShortcut)
 	}
 
 	async loadSettings() {
