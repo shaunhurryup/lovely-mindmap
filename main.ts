@@ -21,6 +21,14 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 	mySetting: 'default'
 }
 
+const random = (e: number) => {
+	let t = [];
+	for (let n = 0; n < e; n++) {
+		t.push((16 * Math.random() | 0).toString(16));
+	}
+	return t.join("")
+}
+
 const MACRO_TASK_DELAY = 50
 
 const VIEW_TYPE_EXAMPLE = "example-view";
@@ -56,6 +64,8 @@ export default class MyPlugin extends Plugin {
 	tabShortcut: KeymapEventHandler;
 	spaceShortcut: KeymapEventHandler;
 	cShortcut: KeymapEventHandler;
+	enterShortcut: KeymapEventHandler;
+	shiftEnterShortcut: KeymapEventHandler;
 
 	async activateView() {
 		this.app.workspace.detachLeavesOfType(VIEW_TYPE_EXAMPLE);
@@ -116,7 +126,7 @@ export default class MyPlugin extends Plugin {
 		if (selections === undefined) return null
 
 		if (selections.size !== 1) {
-			console.error(`You are using \`getSingleSelection\` function! Expect selected node \`1\`, you select \`${selections.size}\``)
+			console.error(`You are using \`getSingleSelection\` function! Expect selected node number is \`1\`, you select \`${selections.size}\``)
 			return null
 		}
 
@@ -129,6 +139,32 @@ export default class MyPlugin extends Plugin {
 
 		// 魔法打败魔法
 		setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+	}
+
+	getFromNodes(target: OMM.Node) {
+		const fromNodeFilter = (edge: OMM.Edge) => edge.to.node.id === target.id
+
+		return this.canvas
+			.getEdgesForNode(target)
+			.filter(fromNodeFilter)
+			.map((edge: OMM.Edge) => edge.from.node)
+	}
+
+	getSibNodes(target: OMM.Node) {
+		const sibNodeFilter = (sibNode: OMM.Node) => {}
+
+		const fromNodes = this.getFromNodes(target)
+		const toNodes = this.getToNodes(fromNodes[0])
+		return toNodes.filter(node => node.id !== target.id)
+	}
+
+	getToNodes(target: OMM.Node) {
+		const toNodeFilter = (edge: OMM.Edge) => edge.from.node.id === target.id
+
+		return this.canvas
+			.getEdgesForNode(target)
+			.filter(toNodeFilter)
+			.map((edge: OMM.Edge) => edge.to.node)
 	}
 
 
@@ -148,26 +184,16 @@ export default class MyPlugin extends Plugin {
 
 		})
 
-		const random = (e: number) => {
-			let t = [];
-			for (let n = 0; n < e; n++) {
-				t.push((16 * Math.random() | 0).toString(16));
-			}
-			return t.join("")
-		}
-
 		this.spaceShortcut = this.app.scope.register([], ' ', () => {
 			const selection = this.getSingleSelection()
-			if (selection === null || selection.isEditing) return
+			if (!selection || selection.isEditing) return
 			selection.startEditing();
 			this.canvas.zoomToSelection();
 		})
 
 		this.tabShortcut = this.app.scope.register([], 'Tab', () => {
-			const selections = this.canvas.selection
-			if (selections.size !== 1) return
-
-			const selectionNode: OMM.Node = selections.values().next().value
+			const selectionNode = this.getSingleSelection()
+			if (!selectionNode) return
 
 			const {
 				x,
@@ -179,7 +205,6 @@ export default class MyPlugin extends Plugin {
 			// node with from and to attrs we called `Edge`
 			// node without from and to but has x,y,width,height attrs we called `Node`
 			const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
-
 
 			// return this.edgeFrom.getArray(e).concat(this.edgeTo.getArray(e))
 			const sibNodes = this.canvas
@@ -226,6 +251,61 @@ export default class MyPlugin extends Plugin {
 			this.zoomToNode(childNode)
 		})
 
+		this.enterShortcut = this.app.scope.register([], 'enter', () => {
+			const selectionNode = this.getSingleSelection()
+			if (!selectionNode) return
+
+			const {
+				x,
+				y,
+				width,
+				height,
+			} = selectionNode
+
+			const fromNode = this.getFromNodes(selectionNode)[0]
+			const toNodes = this.getToNodes(fromNode)
+			const sibNodes = this.getSibNodes(selectionNode)
+
+			const willInsertedNode = this.canvas.createTextNode({
+				pos: {
+					x: x,
+					y: y + height + 20,
+					height: height,
+					width: width
+				},
+				size: {
+					x: x,
+					y: y + height + 20,
+					height: height,
+					width: width
+				},
+				text: Date.now() + '',
+				focus: false,
+				save: true,
+			})
+
+			const data = this.canvas.getData()
+
+			this.canvas.importData({
+				"edges": [
+					...data.edges,
+					{
+						"id": random(6),
+						"fromNode": fromNode.id,
+						"fromSide": 'right',
+						"toNode": willInsertedNode.id,
+						"toSide": 'left',
+					}
+				],
+				"nodes": data.nodes,
+			})
+
+
+			this.reflow(fromNode, toNodes.concat(willInsertedNode))
+		})
+
+		this.shiftEnterShortcut = this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter'))
+
 		this.hShortcut = this.app.scope.register([], 'h', () => {
 			console.log('canvas:\n', this.canvas)
 
@@ -268,6 +348,8 @@ export default class MyPlugin extends Plugin {
 		this.app.scope.unregister(this.tabShortcut)
 		this.app.scope.unregister(this.cShortcut)
 		this.app.scope.unregister(this.spaceShortcut)
+		this.app.scope.unregister(this.enterShortcut)
+		this.app.scope.unregister(this.shiftEnterShortcut)
 	}
 
 	async loadSettings() {
