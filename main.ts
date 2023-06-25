@@ -1,15 +1,4 @@
-import {
-	App,
-	Editor, ItemView, KeymapEventHandler, KeymapEventListener, MarkdownRenderChild,
-	MarkdownView,
-	Menu,
-	Modal,
-	Notice,
-	Plugin,
-	PluginSettingTab,
-	Setting,
-	WorkspaceLeaf
-} from 'obsidian'
+import {App, ItemView, KeymapEventHandler, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf} from 'obsidian'
 
 // Remember to rename these classes and interfaces!
 
@@ -250,6 +239,61 @@ export default class MyPlugin extends Plugin {
 
 			this.zoomToNode(childNode)
 		})
+
+		this.enterShortcut = this.app.scope.register([], 'enter', () => {
+			const selectionNode = this.getSingleSelection()
+			if (!selectionNode || selectionNode.isEditing) return
+
+			const {
+				x,
+				y,
+				width,
+				height,
+			} = selectionNode
+
+			const fromNode = this.getFromNodes(selectionNode)[0]
+			const toNodes = this.getToNodes(fromNode)
+			const sibNodes = this.getSibNodes(selectionNode)
+
+			const willInsertedNode = this.canvas.createTextNode({
+				pos: {
+					x: x,
+					y: y + height + 20,
+					height: height,
+					width: width
+				},
+				size: {
+					x: x,
+					y: y + height + 20,
+					height: height,
+					width: width
+				},
+				text: Date.now() + '',
+				focus: false,
+				save: true,
+			})
+
+			const data = this.canvas.getData()
+
+			this.canvas.importData({
+				"edges": [
+					...data.edges,
+					{
+						"id": random(6),
+						"fromNode": fromNode.id,
+						"fromSide": 'right',
+						"toNode": willInsertedNode.id,
+						"toSide": 'left',
+					}
+				],
+				"nodes": data.nodes,
+			})
+
+
+			this.reflow(fromNode, toNodes.concat(willInsertedNode))
+		})
+
+		this.shiftEnterShortcut = this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter'))
 
 		this.enterShortcut = this.app.scope.register([], 'enter', () => {
 			const selectionNode = this.getSingleSelection()
