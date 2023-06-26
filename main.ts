@@ -1,13 +1,24 @@
-import {App, ItemView, KeymapEventHandler, Modal, Plugin, PluginSettingTab, Setting, WorkspaceLeaf} from 'obsidian'
+import {
+	App,
+	ItemView,
+	KeymapEventHandler,
+	Modal,
+	moment,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	WorkspaceLeaf
+} from 'obsidian'
 
-// Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
-	mySetting: string;
+	mySetting: string
+	autoFocus: boolean
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	mySetting: 'default',
+	autoFocus: false,
 }
 
 const random = (e: number) => {
@@ -20,54 +31,13 @@ const random = (e: number) => {
 
 const MACRO_TASK_DELAY = 50
 
-const VIEW_TYPE_EXAMPLE = "example-view";
+const EPSILON = 1
 
-class ExampleView extends ItemView {
-	constructor(leaf: WorkspaceLeaf) {
-		super(leaf);
-	}
-
-	getViewType() {
-		return VIEW_TYPE_EXAMPLE;
-	}
-
-	getDisplayText() {
-		return "Example view";
-	}
-
-	async onOpen() {
-		const container = this.containerEl.children[1];
-		container.empty();
-		container.createEl("h4", { text: "Example view" });
-	}
-
-	async onClose() {
-		// Nothing to clean up.
-	}
-}
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 	canvas: any;
-	hShortcut: KeymapEventHandler;
-	tabShortcut: KeymapEventHandler;
-	spaceShortcut: KeymapEventHandler;
-	cShortcut: KeymapEventHandler;
-	enterShortcut: KeymapEventHandler;
-	shiftEnterShortcut: KeymapEventHandler;
-
-	async activateView() {
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_EXAMPLE);
-
-		await this.app.workspace.getRightLeaf(false).setViewState({
-			type: VIEW_TYPE_EXAMPLE,
-			active: true,
-		});
-
-		this.app.workspace.revealLeaf(
-			this.app.workspace.getLeavesOfType(VIEW_TYPE_EXAMPLE)[0]
-		);
-	}
+	hotkeys: KeymapEventHandler[] = []
 
 	// sibNodes must have x,y,height,width attributes
 	reflow(parentNode, sibNodes) {
@@ -93,15 +63,7 @@ export default class MyPlugin extends Plugin {
 
 		const getSum = (arr: number[]) => arr.reduce((sum, cur) => sum + cur, 0)
 
-		sibNodes.forEach((node, i) => {
-			if (i === 0) {
-				node.moveTo({
-					x: parentNode.width + parentNode.x + COLUMN_GAP,
-					y: top,
-				})
-				return
-			}
-
+		sibNodes.sort((a, b) => a.y - b.y).forEach((node, i) => {
 			node.moveTo({
 				x: parentNode.width + parentNode.x + COLUMN_GAP,
 				y: top + ROW_GAP * i + getSum(bbox.heightNodes.slice(0, i))
@@ -127,7 +89,9 @@ export default class MyPlugin extends Plugin {
 		this.canvas.zoomToSelection()
 
 		// 魔法打败魔法
-		setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+		if (DEFAULT_SETTINGS.autoFocus) {
+			setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+		}
 	}
 
 	getFromNodes(target: OMM.Node) {
@@ -140,8 +104,6 @@ export default class MyPlugin extends Plugin {
 	}
 
 	getSibNodes(target: OMM.Node) {
-		const sibNodeFilter = (sibNode: OMM.Node) => {}
-
 		const fromNodes = this.getFromNodes(target)
 		const toNodes = this.getToNodes(fromNodes[0])
 		return toNodes.filter(node => node.id !== target.id)
@@ -156,33 +118,19 @@ export default class MyPlugin extends Plugin {
 			.map((edge: OMM.Edge) => edge.to.node)
 	}
 
-
-	async onload() {
-		await this.loadSettings();
-
-		this.canvas = app.workspace.getActiveViewOfType(ItemView)?.canvas
-
-		this.registerView(
-			VIEW_TYPE_EXAMPLE,
-			(leaf) => new ExampleView(leaf)
-		);
-
-		this.cShortcut = this.app.scope.register([], 'c', () => {
-			// const selections = this.canvas.selection
-			// if (selections.size !== 1) return
-
-		})
-
-		this.spaceShortcut = this.app.scope.register([], ' ', () => {
+	focusNode() {
+		return this.app.scope.register([], ' ', () => {
 			const selection = this.getSingleSelection()
 			if (!selection || selection.isEditing) return
 			selection.startEditing();
 			this.canvas.zoomToSelection();
 		})
+	}
 
-		this.tabShortcut = this.app.scope.register([], 'Tab', () => {
+	createChildren() {
+		return this.app.scope.register([], 'Tab', () => {
 			const selectionNode = this.getSingleSelection()
-			if (!selectionNode) return
+			if (!selectionNode || selectionNode.isEditing) return
 
 			const {
 				x,
@@ -205,12 +153,8 @@ export default class MyPlugin extends Plugin {
 				pos: {
 					x: x + width + 200,
 					y: y,
-					height: height,
-					width: width
 				},
 				size: {
-					x: x + width + 200,
-					y: y,
 					height: height,
 					width: width
 				},
@@ -239,8 +183,10 @@ export default class MyPlugin extends Plugin {
 
 			this.zoomToNode(childNode)
 		})
+	}
 
-		this.enterShortcut = this.app.scope.register([], 'enter', () => {
+	createSibNode() {
+		return this.app.scope.register([], 'enter', () => {
 			const selectionNode = this.getSingleSelection()
 			if (!selectionNode || selectionNode.isEditing) return
 
@@ -253,22 +199,17 @@ export default class MyPlugin extends Plugin {
 
 			const fromNode = this.getFromNodes(selectionNode)[0]
 			const toNodes = this.getToNodes(fromNode)
-			const sibNodes = this.getSibNodes(selectionNode)
 
 			const willInsertedNode = this.canvas.createTextNode({
 				pos: {
 					x: x,
-					y: y + height + 20,
-					height: height,
-					width: width
+					y: y + EPSILON,
 				},
 				size: {
-					x: x,
-					y: y + height + 20,
-					height: height,
-					width: width
+					height,
+					width,
 				},
-				text: Date.now() + '',
+				text: moment().format('YYYY-MM-DD HH:mm:ss'),
 				focus: false,
 				save: true,
 			})
@@ -291,75 +232,30 @@ export default class MyPlugin extends Plugin {
 
 
 			this.reflow(fromNode, toNodes.concat(willInsertedNode))
+			this.zoomToNode(willInsertedNode)
 		})
-
-		this.shiftEnterShortcut = this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter'))
-
-		this.enterShortcut = this.app.scope.register([], 'enter', () => {
-			const selectionNode = this.getSingleSelection()
-			if (!selectionNode) return
-
-			const {
-				x,
-				y,
-				width,
-				height,
-			} = selectionNode
-
-			const fromNode = this.getFromNodes(selectionNode)[0]
-			const toNodes = this.getToNodes(fromNode)
-			const sibNodes = this.getSibNodes(selectionNode)
-
-			const willInsertedNode = this.canvas.createTextNode({
-				pos: {
-					x: x,
-					y: y + height + 20,
-					height: height,
-					width: width
-				},
-				size: {
-					x: x,
-					y: y + height + 20,
-					height: height,
-					width: width
-				},
-				text: Date.now() + '',
-				focus: false,
-				save: true,
-			})
-
-			const data = this.canvas.getData()
-
-			this.canvas.importData({
-				"edges": [
-					...data.edges,
-					{
-						"id": random(6),
-						"fromNode": fromNode.id,
-						"fromSide": 'right',
-						"toNode": willInsertedNode.id,
-						"toSide": 'left',
-					}
-				],
-				"nodes": data.nodes,
-			})
+	}
 
 
-			this.reflow(fromNode, toNodes.concat(willInsertedNode))
-		})
+	async onload() {
+		await this.loadSettings();
 
-		this.shiftEnterShortcut = this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter'))
+		this.canvas = app.workspace.getLeavesOfType("canvas").first()?.view?.canvas
 
-		this.hShortcut = this.app.scope.register([], 'h', () => {
+		this.hotkeys.push(this.focusNode())
+
+		this.hotkeys.push(this.createChildren())
+
+		this.hotkeys.push(this.createSibNode())
+
+		this.hotkeys.push(this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter')))
+
+		this.hotkeys.push(this.app.scope.register([], 'h', () => {
 			console.log('canvas:\n', this.canvas)
 
 			const selections = this.canvas.selection.values().next().value
 			console.log('selections:\n', selections)
-		})
-
-		this.addRibbonIcon("dice", "Activate view", () => {
-			this.activateView();
-		});
+		}))
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
@@ -388,12 +284,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {
-		this.app.scope.unregister(this.hShortcut)
-		this.app.scope.unregister(this.tabShortcut)
-		this.app.scope.unregister(this.cShortcut)
-		this.app.scope.unregister(this.spaceShortcut)
-		this.app.scope.unregister(this.enterShortcut)
-		this.app.scope.unregister(this.shiftEnterShortcut)
+		this.hotkeys.forEach(this.app.scope.unregister)
 	}
 
 	async loadSettings() {
