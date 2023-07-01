@@ -84,13 +84,17 @@ export default class MyPlugin extends Plugin {
     return selections.values().next().value
   }
 
+  editToNode(node: OMM.Node) {
+    setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+  }
+
   zoomToNode(node: OMM.Node) {
     this.canvas.selectOnly(node)
     this.canvas.zoomToSelection()
 
     // 魔法打败魔法
     if (DEFAULT_SETTINGS.autoFocus) {
-      setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
+      this.editToNode(node)
     }
   }
 
@@ -157,6 +161,11 @@ export default class MyPlugin extends Plugin {
   }
 
   view2Focus() {
+    if (this.getSingleSelection() !== null) {
+      console.error(`Not view mode! Please don't invoke this function.`)
+      return
+    }
+
     const viewportBBox = this.canvas.getViewportBBox()
     const centerPoint: Position = [
       (viewportBBox.minX + viewportBBox.maxX) / 2,
@@ -169,6 +178,13 @@ export default class MyPlugin extends Plugin {
   }
 
   focus2Edit() {
+    const selection = this.getSingleSelection()
+    if (!selection || !selection.isFocused || selection.isEditing) {
+      console.error(`You can't invoke \`focus2Edit\``)
+      return
+    }
+
+    this.editToNode(selection)
   }
 
   edit2Focus() {}
