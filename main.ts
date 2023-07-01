@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
   autoFocus: false,
 }
 
+type Position = [x: number, y: number]
+
 const directionMap = {
   'up': 'arrowUp',
   'down': 'arrowDown',
@@ -74,9 +76,7 @@ export default class MyPlugin extends Plugin {
   getSingleSelection(): OMM.Node | null {
     const selections = this.canvas.selection
 
-    if (selections === undefined) return null
-
-    if (selections.size !== 1) {
+    if (selections.size === 0 || selections.size > 1) {
       console.error(`You are using \`getSingleSelection\` function! Expect selected node number is \`1\`, you select \`${selections.size}\``)
       return null
     }
@@ -118,13 +118,114 @@ export default class MyPlugin extends Plugin {
       .map((edge: OMM.Edge) => edge.to.node)
   }
 
-  focusNode() {
-    return this.app.scope.register([], ' ', () => {
-      const selection = this.getSingleSelection()
-      if (!selection || selection.isEditing) return
-      selection.startEditing()
-      this.canvas.zoomToSelection()
+  calcDistance(a: Position, b: Position) {
+    return Math.sqrt(
+      (a[0] - a[1]) ** 2 +
+      (b[0] - b[1]) ** 2
+    )
+  }
+
+  findClosestNodeByBbox(pos: Position, nodes: OMM.Node[]): { node: OMM.Node, distance: number } {
+    return nodes.reduce((prev, cur, idx) => {
+      const a: Position = [cur.bbox.minX, cur.bbox.minY]
+      const b: Position = [cur.bbox.maxX, cur.bbox.minY]
+      const c: Position = [cur.bbox.minX, cur.bbox.maxY]
+      const d: Position = [cur.bbox.maxX, cur.bbox.maxY]
+      // todo: at least two or more point in each node can be ignored
+      const distance = Math.min(
+        this.calcDistance(pos, a),
+        this.calcDistance(pos, b),
+        this.calcDistance(pos, c),
+        this.calcDistance(pos, d),
+      )
+
+      if (idx === 0) {
+        return {
+          node: cur,
+          distance: distance,
+        }
+      }
+
+      return distance < prev.distance
+        ? { node: cur, distance }
+        : prev
+
+    }, {
+      node: {} as any,
+      distance: 0,
     })
+  }
+
+  view2Focus() {
+    const viewportBBox = this.canvas.getViewportBBox()
+    const centerPoint: Position = [
+      (viewportBBox.minX + viewportBBox.maxX) / 2,
+      (viewportBBox.minY + viewportBBox.maxY) / 2,
+    ]
+
+    const viewportNodes = this.canvas.getViewportNodes()
+    const res = this.findClosestNodeByBbox(centerPoint, viewportNodes)
+    this.zoomToNode(res.node)
+  }
+
+  focus2Edit() {
+  }
+
+  edit2Focus() {}
+
+  focus2View() {}
+
+  focusNode() {
+    return this.app.scope.register([], 'f', () => {
+      const selection = this.getSingleSelection()
+
+      const isView = !selection
+      if (isView) {
+        this.view2Focus()
+        return
+      }
+
+      const isFocus = selection.isFocused === true
+      if (isFocus) {
+        this.focus2Edit()
+        return
+      }
+    })
+  }
+
+  blurNode() {
+    return this.app.scope.register(['Meta'], 'Escape', () => {
+      const selection = this.getSingleSelection()
+      if (!selection) return
+
+      // const convertToFile = selection.convertToFile()
+      // const getData = selection.getData()
+      // const initialize = selection.initialize()
+      // const render = selection.render()
+      selection.blur()
+      selection.focus()
+
+
+      console.log('Blur!')
+    })
+  }
+
+  insertNodeBriefly() {
+    const bbox = this.canvas.getViewportBBox()
+
+    const node = this.canvas.createTextNode({
+      pos: {
+        x: (bbox.minX + bbox.maxX) / 2 - 50,
+        y: (bbox.minY + bbox.maxY) / 2 - 50,
+      },
+      size: {
+        width: 100,
+        height: 100
+      },
+      focus: false,
+      save: true
+    })
+
   }
 
   createChildren() {
@@ -304,6 +405,7 @@ export default class MyPlugin extends Plugin {
     this.canvas = app.workspace.getLeavesOfType('canvas').first()?.view?.canvas
 
     this.hotkeys.push(this.focusNode())
+    this.hotkeys.push(this.blurNode())
 
     this.hotkeys.push(this.createChildren())
 
