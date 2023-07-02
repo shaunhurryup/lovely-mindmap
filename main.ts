@@ -196,11 +196,18 @@ export default class MyPlugin extends Plugin {
     }
 
     selection.blur()
-    // hack: blur will lose selection
+    // hack: blur will lose selection style
     selection.focus()
   }
 
-  focus2View() {}
+  focus2View() {
+    const selection = this.getSingleSelection()
+    if (!selection) {
+      return
+    }
+
+    this.canvas.deselectAll()
+  }
 
   focusNode() {
     return this.app.scope.register([], 'f', () => {
@@ -221,7 +228,7 @@ export default class MyPlugin extends Plugin {
   }
 
   blurNode() {
-    return this.app.scope.register(['Meta'], 'Escape', () => {
+    return this.app.scope.register(['Meta'], 'Escape', (e) => {
       const selection = this.getSingleSelection()
       if (!selection) return
 
@@ -418,6 +425,12 @@ export default class MyPlugin extends Plugin {
 
   help() {
     return this.app.scope.register([], 'h', () => {
+      console.dir('document:\n', document)
+
+      console.log('this:\n', this)
+
+      console.log('app:\n', this.app)
+
       console.log('canvas:\n', this.canvas)
 
       const selections = this.canvas.selection.values().next().value
@@ -426,9 +439,10 @@ export default class MyPlugin extends Plugin {
   }
 
   test() {
-    return this.app.scope.register([], 't', () => {
-      const nodes = this.canvas.getViewportNodes()
-      this.canvas.selectOnly(nodes[0])
+    return this.app.scope.register([], 't', (e) => {
+      // this.canvas.onKeydown(e)
+      // const nodes = this.canvas.getViewportNodes()
+      // this.canvas.selectOnly(nodes[0])
     })
   }
 
