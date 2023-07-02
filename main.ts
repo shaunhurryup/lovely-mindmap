@@ -180,14 +180,25 @@ export default class MyPlugin extends Plugin {
   focus2Edit() {
     const selection = this.getSingleSelection()
     if (!selection || !selection.isFocused || selection.isEditing) {
-      console.error(`You can't invoke \`focus2Edit\``)
+      // todo: same error should only show once
+      console.error(`You can't invoke \`focus2Edit\` for not in focus mode.`)
       return
     }
 
     this.editToNode(selection)
   }
 
-  edit2Focus() {}
+  edit2Focus() {
+    const selection = this.getSingleSelection()
+    if (!selection || !selection.isEditing) {
+      console.error(`You can't invoke \`edit2Focus\` for not in edit mode.`)
+      return
+    }
+
+    selection.blur()
+    // hack: blur will lose selection
+    selection.focus()
+  }
 
   focus2View() {}
 
@@ -214,15 +225,15 @@ export default class MyPlugin extends Plugin {
       const selection = this.getSingleSelection()
       if (!selection) return
 
-      // const convertToFile = selection.convertToFile()
-      // const getData = selection.getData()
-      // const initialize = selection.initialize()
-      // const render = selection.render()
-      selection.blur()
-      selection.focus()
+      if (selection.isEditing) {
+        this.edit2Focus()
+        return
+      }
 
-
-      console.log('Blur!')
+      if (selection.isFocused) {
+        this.focus2View()
+        return
+      }
     })
   }
 
@@ -414,6 +425,13 @@ export default class MyPlugin extends Plugin {
     })
   }
 
+  test() {
+    return this.app.scope.register([], 't', () => {
+      const nodes = this.canvas.getViewportNodes()
+      this.canvas.selectOnly(nodes[0])
+    })
+  }
+
 
   async onload() {
     await this.loadSettings()
@@ -435,6 +453,7 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.nodeNavigation('down'))
 
     this.hotkeys.push(this.help())
+    this.hotkeys.push(this.test())
 
     // This adds a status bar item to the bottom of the app. Does not work on mobile apps.
     const statusBarItemEl = this.addStatusBarItem()
