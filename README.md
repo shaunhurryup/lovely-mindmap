@@ -18,6 +18,7 @@ Other TODO feature
 - [ ] Import file like lark, xmind and so on
 - [ ] Export obsidian mindmap to specified file format
 - [ ] `cmd + opt + L` Organize your graph in a neat manner
+- [ ] Auto layout avoid collapse
 
 
 # Donate
