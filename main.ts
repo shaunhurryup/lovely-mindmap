@@ -1,4 +1,5 @@
-import {App, KeymapEventHandler, Modal, moment, Plugin, PluginSettingTab, Setting} from 'obsidian'
+import { around } from 'monkey-around'
+import {App, KeymapEventHandler, Modal, moment, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian'
 
 
 interface MyPluginSettings {
@@ -12,6 +13,20 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 }
 
 type Position = [x: number, y: number]
+
+class Error {
+  private errors = {
+    '1xx': 'illegal function invoking error',
+    '2xx': 'interaction error'
+  }
+
+  private errorCounter = [
+    {
+      code: '1xx',
+      count: 0,
+    }
+  ]
+}
 
 const directionMap = {
   'up': 'arrowUp',
@@ -229,6 +244,8 @@ export default class MyPlugin extends Plugin {
 
   blurNode() {
     return this.app.scope.register(['Meta'], 'Escape', (e) => {
+      console.log('Escape pressed')
+
       const selection = this.getSingleSelection()
       if (!selection) return
 
@@ -425,8 +442,6 @@ export default class MyPlugin extends Plugin {
 
   help() {
     return this.app.scope.register([], 'h', () => {
-      console.dir('document:\n', document)
-
       console.log('this:\n', this)
 
       console.log('app:\n', this.app)
@@ -440,10 +455,45 @@ export default class MyPlugin extends Plugin {
 
   test() {
     return this.app.scope.register([], 't', (e) => {
-      // this.canvas.onKeydown(e)
-      // const nodes = this.canvas.getViewportNodes()
-      // this.canvas.selectOnly(nodes[0])
     })
+  }
+
+  patchMarkdownFileInfo() {
+    const patchEditor = () => {
+      const editorInfo = app.workspace.activeEditor;
+      if(!editorInfo) return false;
+
+      const patchEditorInfo = editorInfo.constructor;
+
+      const uninstaller = around(patchEditorInfo.prototype, {
+        showPreview: (next) =>
+          function (e: any) {
+            console.log('next:\n', next)
+            console.log('e:\n', e)
+
+            next.call(this, e);
+            if(e) {
+              this.node.canvas.wrapperEl.focus();
+              this.node?.setIsEditing(false);
+            }
+          },
+      });
+      this.register(uninstaller);
+
+      console.log("Obsidian-Canvas-MindMap: markdown file info patched");
+      return true;
+    }
+
+    this.app.workspace.onLayoutReady(() => {
+      if (!patchEditor()) {
+        const evt = app.workspace.on("file-open", () => {
+          setTimeout(()=>{
+            patchEditor() && app.workspace.offref(evt);
+          }, 100);
+        });
+        this.registerEvent(evt);
+      }
+    });
   }
 
 
@@ -469,30 +519,7 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.help())
     this.hotkeys.push(this.test())
 
-    // This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-    const statusBarItemEl = this.addStatusBarItem()
-    statusBarItemEl.setText('Status Bar Text')
-
-    // This adds a simple command that can be triggered anywhere
-    this.addCommand({
-      id: 'open-sample-modal-simple',
-      name: 'Open sample modal (simple)',
-      callback: () => {
-        new SampleModal(this.app).open()
-      }
-    })
-
-    // This adds a settings tab so the user can configure various aspects of the plugin
-    this.addSettingTab(new SampleSettingTab(this.app, this))
-
-    // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-    // Using this function will automatically remove the event listener when this plugin is disabled.
-    // this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-    // 	console.log('click', evt);
-    // });
-
-    // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-    this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000))
+    this.patchMarkdownFileInfo()
   }
 
   onunload() {
