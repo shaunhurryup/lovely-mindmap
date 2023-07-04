@@ -141,8 +141,8 @@ export default class MyPlugin extends Plugin {
 
   calcDistance(a: Position, b: Position) {
     return Math.sqrt(
-      (a[0] - a[1]) ** 2 +
-      (b[0] - b[1]) ** 2
+      (a[0] - b[0]) ** 2 +
+      (a[1] - b[1]) ** 2
     )
   }
 
@@ -346,7 +346,7 @@ export default class MyPlugin extends Plugin {
           height,
           width,
         },
-        text: moment().format('YYYY-MM-DD HH:mm:ss'),
+        text: '',
         focus: false,
         save: true,
       })
