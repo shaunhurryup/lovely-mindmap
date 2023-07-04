@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 
 type Position = [x: number, y: number]
 
+type NewNodeSize = 'inherit' | { width: number, height: number }
+
 class Error {
   private errors = {
     '1xx': 'illegal function invoking error',
@@ -261,24 +263,6 @@ export default class MyPlugin extends Plugin {
     })
   }
 
-  insertNodeBriefly() {
-    const bbox = this.canvas.getViewportBBox()
-
-    const node = this.canvas.createTextNode({
-      pos: {
-        x: (bbox.minX + bbox.maxX) / 2 - 50,
-        y: (bbox.minY + bbox.maxY) / 2 - 50,
-      },
-      size: {
-        width: 100,
-        height: 100
-      },
-      focus: false,
-      save: true
-    })
-
-  }
-
   createChildren() {
     return this.app.scope.register([], 'Tab', () => {
       const selectionNode = this.getSingleSelection()
@@ -295,16 +279,17 @@ export default class MyPlugin extends Plugin {
       // node without from and to but has x,y,width,height attrs we called `Node`
       const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
 
-      // return this.edgeFrom.getArray(e).concat(this.edgeTo.getArray(e))
       const sibNodes = this.canvas
         .getEdgesForNode(selectionNode)
         .filter(rightSideNodeFilter)
         .map((node: OMM.Edge) => node.to.node)
 
+      const nextNodeY = Math.max(...sibNodes.map((node: OMM.Node) => node.y)) + EPSILON
+
       const childNode = this.canvas.createTextNode({
         pos: {
           x: x + width + 200,
-          y: y,
+          y: nextNodeY,
         },
         size: {
           height: height,
@@ -468,9 +453,6 @@ export default class MyPlugin extends Plugin {
       const uninstaller = around(patchEditorInfo.prototype, {
         showPreview: (next) =>
           function (e: any) {
-            console.log('next:\n', next)
-            console.log('e:\n', e)
-
             next.call(this, e);
             if(e) {
               this.node.canvas.wrapperEl.focus();
@@ -479,8 +461,6 @@ export default class MyPlugin extends Plugin {
           },
       });
       this.register(uninstaller);
-
-      console.log("Obsidian-Canvas-MindMap: markdown file info patched");
       return true;
     }
 
