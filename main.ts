@@ -52,6 +52,23 @@ const EPSILON = 1
 
 const OFFSET_WEIGHT = 1.1
 
+class A {
+  a() {
+    console.log('aaa')
+  }
+}
+
+class B {
+  b() {
+    console.log('b')
+  }
+}
+
+class C {
+  c() {
+    console.log('c')
+  }
+}
 
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings
@@ -528,6 +545,12 @@ export default class MyPlugin extends Plugin {
     await this.saveData(this.settings)
   }
 }
+
+const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: A.prototype[key] }))
+const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: B.prototype[key] }))
+const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: C.prototype[key] }))
+
+Object.assign(MyPlugin.prototype, ...mixinA, ...mixinB, ...mixinC)
 
 class SampleModal extends Modal {
   constructor(app: App) {
