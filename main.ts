@@ -1,4 +1,4 @@
-import { around } from 'monkey-around'
+import {around} from 'monkey-around'
 import {App, KeymapEventHandler, Modal, Modifier, moment, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian'
 
 
@@ -10,6 +10,33 @@ interface MyPluginSettings {
 const DEFAULT_SETTINGS: MyPluginSettings = {
   mySetting: 'default',
   autoFocus: false,
+}
+
+function Debounce(delay: number = 100): MethodDecorator {
+  let lastTime = 0
+  let timer: NodeJS.Timeout
+
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value
+
+    descriptor.value = function (...args: any[]) {
+      const now = Date.now()
+      clearTimeout(timer)
+
+      if ((now - lastTime) < delay) {
+        return
+      }
+
+      timer = setTimeout(() => {
+        originalMethod.apply(this, args)
+        lastTime = 0
+      }, delay)
+
+      lastTime = now
+    }
+
+    return descriptor
+  }
 }
 
 type Position = [x: number, y: number]
@@ -192,7 +219,7 @@ export default class MyPlugin extends Plugin {
       }
 
       return distance < prev.distance
-        ? { node: cur, distance }
+        ? {node: cur, distance}
         : prev
 
     }, {
@@ -287,65 +314,65 @@ export default class MyPlugin extends Plugin {
     })
   }
 
+  @Debounce()
   createChildren() {
-    return this.app.scope.register([], 'Tab', () => {
-      const selectionNode = this.getSingleSelection()
-      if (!selectionNode || selectionNode.isEditing) return
+    const selectionNode = this.getSingleSelection()
+    if (!selectionNode || selectionNode.isEditing) return
 
-      const {
-        x,
-        y,
-        width,
-        height,
-      } = selectionNode
+    const {
+      x,
+      y,
+      width,
+      height,
+    } = selectionNode
 
-      // node with from and to attrs we called `Edge`
-      // node without from and to but has x,y,width,height attrs we called `Node`
-      const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
+    // node with from and to attrs we called `Edge`
+    // node without from and to but has x,y,width,height attrs we called `Node`
+    const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
 
-      const sibNodes = this.canvas
-        .getEdgesForNode(selectionNode)
-        .filter(rightSideNodeFilter)
-        .map((node: OMM.Edge) => node.to.node)
+    const sibNodes = this.canvas
+      .getEdgesForNode(selectionNode)
+      .filter(rightSideNodeFilter)
+      .map((node: OMM.Edge) => node.to.node)
 
-      const nextNodeY = Math.max(...sibNodes.map((node: OMM.Node) => node.y)) + EPSILON
+    const nextNodeY = Math.max(...sibNodes.map((node: OMM.Node) => node.y)) + EPSILON
 
-      const childNode = this.canvas.createTextNode({
-        pos: {
-          x: x + width + 200,
-          y: nextNodeY,
-        },
-        size: {
-          height: height,
-          width: width
-        },
-        text: '',
-        focus: false,
-        save: true,
-      })
-
-      const data = this.canvas.getData()
-
-      this.canvas.importData({
-        'edges': [
-          ...data.edges,
-          {
-            'id': random(6),
-            'fromNode': selectionNode.id,
-            'fromSide': 'right',
-            'toNode': childNode.id,
-            'toSide': 'left',
-          }
-        ],
-        'nodes': data.nodes,
-      })
-
-      this.reflow(selectionNode, sibNodes.concat(childNode))
-
-      this.zoomToNode(childNode)
+    const childNode = this.canvas.createTextNode({
+      pos: {
+        x: x + width + 200,
+        y: nextNodeY,
+      },
+      size: {
+        height: height,
+        width: width
+      },
+      text: '',
+      focus: false,
+      save: true,
     })
+
+    const data = this.canvas.getData()
+
+    this.canvas.importData({
+      'edges': [
+        ...data.edges,
+        {
+          'id': random(6),
+          'fromNode': selectionNode.id,
+          'fromSide': 'right',
+          'toNode': childNode.id,
+          'toSide': 'left',
+        }
+      ],
+      'nodes': data.nodes,
+    })
+
+    this.reflow(selectionNode, sibNodes.concat(childNode))
+
+    this.zoomToNode(childNode)
   }
 
+  @Debounce()
   createSibNode(_: unknown, shortcut: Shortcut) {
     const selectionNode = this.getSingleSelection()
     if (!selectionNode || selectionNode.isEditing) return
@@ -449,17 +476,15 @@ export default class MyPlugin extends Plugin {
     })
   }
 
+  @Debounce()
   help() {
-    return this.app.scope.register([], 'h', () => {
-      console.log('this:\n', this)
+    console.log('this:\n', this)
 
-      console.log('app:\n', this.app)
+    console.log('app:\n', this.app)
 
-      console.log('canvas:\n', this.canvas)
+    console.log('canvas:\n', this.canvas)
 
-      const selections = this.canvas.selection.values().next().value
-      console.log('selections:\n', selections)
-    })
+    console.log('selections:\n', this.getSingleSelection())
   }
 
   test() {
@@ -469,35 +494,35 @@ export default class MyPlugin extends Plugin {
 
   patchMarkdownFileInfo() {
     const patchEditor = () => {
-      const editorInfo = app.workspace.activeEditor;
-      if(!editorInfo) return false;
+      const editorInfo = app.workspace.activeEditor
+      if (!editorInfo) return false
 
-      const patchEditorInfo = editorInfo.constructor;
+      const patchEditorInfo = editorInfo.constructor
 
       const uninstaller = around(patchEditorInfo.prototype, {
         showPreview: (next) =>
           function (e: any) {
-            next.call(this, e);
-            if(e) {
-              this.node.canvas.wrapperEl.focus();
-              this.node?.setIsEditing(false);
+            next.call(this, e)
+            if (e) {
+              this.node.canvas.wrapperEl.focus()
+              this.node?.setIsEditing(false)
             }
           },
-      });
-      this.register(uninstaller);
-      return true;
+      })
+      this.register(uninstaller)
+      return true
     }
 
     this.app.workspace.onLayoutReady(() => {
       if (!patchEditor()) {
-        const evt = app.workspace.on("file-open", () => {
-          setTimeout(()=>{
-            patchEditor() && app.workspace.offref(evt);
-          }, 100);
-        });
-        this.registerEvent(evt);
+        const evt = app.workspace.on('file-open', () => {
+          setTimeout(() => {
+            patchEditor() && app.workspace.offref(evt)
+          }, 100)
+        })
+        this.registerEvent(evt)
       }
-    });
+    })
   }
 
   createCanvas() {
@@ -521,7 +546,7 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.focusNode())
     this.hotkeys.push(this.blurNode())
 
-    this.hotkeys.push(this.createChildren())
+    this.hotkeys.push(this.app.scope.register([], 'Tab', this.createChildren.bind(this)))
 
     this.hotkeys.push(this.app.scope.register([], 'enter', this.createSibNode.bind(this)))
 
@@ -532,7 +557,7 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.nodeNavigation('up'))
     this.hotkeys.push(this.nodeNavigation('down'))
 
-    this.hotkeys.push(this.help())
+    this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
     this.hotkeys.push(this.test())
 
     this.patchMarkdownFileInfo()
@@ -552,9 +577,9 @@ export default class MyPlugin extends Plugin {
   }
 }
 
-const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: A.prototype[key] }))
-const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: B.prototype[key] }))
-const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({ [key]: C.prototype[key] }))
+const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({[key]: A.prototype[key]}))
+const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({[key]: B.prototype[key]}))
+const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({[key]: C.prototype[key]}))
 
 Object.assign(MyPlugin.prototype, ...mixinA, ...mixinB, ...mixinC)
 

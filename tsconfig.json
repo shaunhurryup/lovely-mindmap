@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "inlineSourceMap": true,
+    "experimentalDecorators": true,
     "inlineSources": true,
     "module": "ESNext",
     "target": "ES6",
