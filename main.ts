@@ -1,5 +1,5 @@
 import { around } from 'monkey-around'
-import {App, KeymapEventHandler, Modal, moment, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian'
+import {App, KeymapEventHandler, Modal, Modifier, moment, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian'
 
 
 interface MyPluginSettings {
@@ -15,6 +15,12 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 type Position = [x: number, y: number]
 
 type NewNodeSize = 'inherit' | { width: number, height: number }
+
+interface Shortcut {
+  modifiers: Modifier
+  key: string
+  vkey: string
+}
 
 class Error {
   private errors = {
@@ -340,55 +346,55 @@ export default class MyPlugin extends Plugin {
     })
   }
 
-  createSibNode() {
-    return this.app.scope.register([], 'enter', () => {
-      const selectionNode = this.getSingleSelection()
-      if (!selectionNode || selectionNode.isEditing) return
+  createSibNode(_: unknown, shortcut: Shortcut) {
+    const selectionNode = this.getSingleSelection()
+    if (!selectionNode || selectionNode.isEditing) return
 
-      const {
-        x,
-        y,
-        width,
+    const {
+      x,
+      y,
+      width,
+      height,
+    } = selectionNode
+
+    const isPressedShift = shortcut.modifiers === 'Shift'
+
+    const fromNode = this.getFromNodes(selectionNode)[0]
+    const toNodes = this.getToNodes(fromNode)
+
+    const willInsertedNode = this.canvas.createTextNode({
+      pos: {
+        x: x,
+        y: isPressedShift ? y - EPSILON : y + EPSILON,
+      },
+      size: {
         height,
-      } = selectionNode
-
-      const fromNode = this.getFromNodes(selectionNode)[0]
-      const toNodes = this.getToNodes(fromNode)
-
-      const willInsertedNode = this.canvas.createTextNode({
-        pos: {
-          x: x,
-          y: y + EPSILON,
-        },
-        size: {
-          height,
-          width,
-        },
-        text: '',
-        focus: false,
-        save: true,
-      })
-
-      const data = this.canvas.getData()
-
-      this.canvas.importData({
-        'edges': [
-          ...data.edges,
-          {
-            'id': random(6),
-            'fromNode': fromNode.id,
-            'fromSide': 'right',
-            'toNode': willInsertedNode.id,
-            'toSide': 'left',
-          }
-        ],
-        'nodes': data.nodes,
-      })
-
-
-      this.reflow(fromNode, toNodes.concat(willInsertedNode))
-      this.zoomToNode(willInsertedNode)
+        width,
+      },
+      text: '',
+      focus: false,
+      save: true,
     })
+
+    const data = this.canvas.getData()
+
+    this.canvas.importData({
+      'edges': [
+        ...data.edges,
+        {
+          'id': random(6),
+          'fromNode': fromNode.id,
+          'fromSide': 'right',
+          'toNode': willInsertedNode.id,
+          'toSide': 'left',
+        }
+      ],
+      'nodes': data.nodes,
+    })
+
+
+    this.reflow(fromNode, toNodes.concat(willInsertedNode))
+    this.zoomToNode(willInsertedNode)
   }
 
   nodeNavigation(direction: keyof typeof directionMap) {
@@ -517,9 +523,9 @@ export default class MyPlugin extends Plugin {
 
     this.hotkeys.push(this.createChildren())
 
-    this.hotkeys.push(this.createSibNode())
+    this.hotkeys.push(this.app.scope.register([], 'enter', this.createSibNode.bind(this)))
 
-    this.hotkeys.push(this.app.scope.register(['Shift'], 'enter', () => console.log('shift enter')))
+    this.hotkeys.push(this.app.scope.register(['Shift'], 'enter', this.createSibNode.bind(this)))
 
     this.hotkeys.push(this.nodeNavigation('right'))
     this.hotkeys.push(this.nodeNavigation('left'))

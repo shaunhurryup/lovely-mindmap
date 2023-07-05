@@ -7,7 +7,7 @@ You can find any basic mindmap feature in this plugin.
 
 - `Tab` create child node and zoom to
 - `Enter` create sibling node and zoom to
-- (TODO)`Shift + Enter` create sibling before and zoom to
+- `Shift + Enter` create sibling before and zoom to
 - `F` activate selection node and start editing
 - `Esc` blur selection node and start navigating
 - `opt + ↑↓←→` move around nodes with smart intention
