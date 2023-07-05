@@ -14,19 +14,19 @@ You can find any basic mindmap feature in this plugin.
 
 # Advanced
 
-First of all, we declare three mode in Oh-My-Mindmap:
+First of all, we declare three modes in Oh-My-Mindmap:
 
 - View - No nodes are selected
 - Navigation - One or more nodes are selected, you can do some operation
 - Edit - One node is selected, and you can find cursor inside node
 
-Other TODO feature
+Another TODO feature
 
 - [ ] `cmd + F` find node by keyword and zoom to
 
 Woah!
 
-- [ ] Import file like lark, XMind and so on
+- [ ] Import file like lark, XMind, and so on
 
 Woah!
 
