@@ -55,8 +55,9 @@ const OFFSET_WEIGHT = 1.1
 
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings
-  canvas: any
+  canvas: any = null
   hotkeys: KeymapEventHandler[] = []
+  intervalTimer = new Map()
 
   // sibNodes must have x,y,height,width attributes
   reflow(parentNode, sibNodes) {
@@ -476,11 +477,23 @@ export default class MyPlugin extends Plugin {
     });
   }
 
+  createCanvas() {
+    const timer = setInterval(() => {
+      this.canvas = app.workspace.getLeavesOfType('canvas').first()?.view?.canvas
+      if (!!this.canvas) {
+        clearInterval(this.intervalTimer.get('canvasInitial'))
+      }
+    }, 1000)
+
+    if (!this.intervalTimer.get('canvasInitial')) {
+      this.intervalTimer.set('canvasInitial', timer)
+    }
+  }
 
   async onload() {
     await this.loadSettings()
 
-    this.canvas = app.workspace.getLeavesOfType('canvas').first()?.view?.canvas
+    this.createCanvas()
 
     this.hotkeys.push(this.focusNode())
     this.hotkeys.push(this.blurNode())
@@ -503,9 +516,8 @@ export default class MyPlugin extends Plugin {
   }
 
   onunload() {
-    this.hotkeys.forEach(key => {
-      this.app.scope.unregister(key)
-    })
+    this.hotkeys.forEach(this.app.scope.unregister)
+    this.intervalTimer.forEach(clearInterval)
   }
 
   async loadSettings() {
