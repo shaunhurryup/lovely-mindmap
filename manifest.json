@@ -3,9 +3,13 @@
 	"name": "oh-my-mindmap",
 	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
+	"description": "Canvas plugin to build your own knowledge graph with smile :-)",
 	"author": "shaun",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "https://github.com/xincan1949",
+	"fundingUrl": {
+		"By Me a Coffee": "https://www.buymeacoffee.com/xincan1949",
+		"支付宝": "https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/Alipay.jpeg",
+		"微信": "https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/WeChatPay.png",
+	},
 	"isDesktopOnly": false
 }
