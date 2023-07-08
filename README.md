@@ -2,7 +2,7 @@
 
 Obsidian canvas plugin to build your own knowledge graph with smiles : )
 
-(DEMO)[./DEMO.gif]
+![DEMO](./DEMO.gif)
 
 It is named mindmap, but not only mindmap.
 We will continue to introduce new features!
