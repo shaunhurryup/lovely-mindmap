@@ -1,9 +1,9 @@
 {
-	"id": "oh-my-mindmap",
-	"name": "oh-my-mindmap",
+	"id": "lovely-mindmap",
+	"name": "lovely-mindmap",
 	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Canvas plugin to build your own knowledge graph with smile :-)",
+	"description": "Obsidian canvas plugin to build your own knowledge graph with smile :-)",
 	"author": "shaun",
 	"authorUrl": "https://github.com/xincan1949",
 	"fundingUrl": {

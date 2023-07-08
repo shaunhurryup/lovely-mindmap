@@ -85,23 +85,6 @@ const EPSILON = 1
 
 const OFFSET_WEIGHT = 1.1
 
-class A {
-  a() {
-    console.log('aaa')
-  }
-}
-
-class B {
-  b() {
-    console.log('b')
-  }
-}
-
-class C {
-  c() {
-    console.log('c')
-  }
-}
 
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings
@@ -145,7 +128,7 @@ export default class MyPlugin extends Plugin {
     const selections = this.canvas.selection
 
     if (selections.size === 0 || selections.size > 1) {
-      console.error(`You are using \`getSingleSelection\` function! Expect selected node number is \`1\`, you select \`${selections.size}\``)
+      // console.error(`You are using \`getSingleSelection\` function! Expect selected node number is \`1\`, you select \`${selections.size}\``)
       return null
     }
 
@@ -230,7 +213,7 @@ export default class MyPlugin extends Plugin {
 
   view2Focus() {
     if (this.getSingleSelection() !== null) {
-      console.error(`Not view mode! Please don't invoke this function.`)
+      // console.error(`Not touch view!`)
       return
     }
 
@@ -249,7 +232,7 @@ export default class MyPlugin extends Plugin {
     const selection = this.getSingleSelection()
     if (!selection || !selection.isFocused || selection.isEditing) {
       // todo: same error should only show once
-      console.error(`You can't invoke \`focus2Edit\` for not in focus mode.`)
+      // console.error(`You can't invoke \`focus2Edit\` for not in navigation view.`)
       return
     }
 
@@ -259,7 +242,7 @@ export default class MyPlugin extends Plugin {
   edit2Focus() {
     const selection = this.getSingleSelection()
     if (!selection || !selection.isEditing) {
-      console.error(`You can't invoke \`edit2Focus\` for not in edit mode.`)
+      // console.error(`You can't invoke \`edit2Focus\` for not in creating view.`)
       return
     }
 
@@ -427,12 +410,15 @@ export default class MyPlugin extends Plugin {
   nodeNavigation(direction: keyof typeof directionMap) {
     return app.scope.register(['Alt'], directionMap[direction], () => {
       const selection = this.getSingleSelection()
-      if (!selection || selection.isEditing) return
+      if (!selection || selection.isEditing) {
+        // const notice = new Notice('')
+        // notice.setMessage('Press `cmd + Esc` to exit creating view')
+        return
+      }
 
       const data = this.canvas.getViewportNodes()
 
 
-      // todo: 直线距离计算也应该更复杂
       const offsetX = (a: OMM.Node, b: OMM.Node) => Math.abs(b.x - a.x)
       const offsetY = (a: OMM.Node, b: OMM.Node) => Math.abs(b.y - a.y)
       // fixed: 复数的非整次方为 NaN
@@ -467,8 +453,6 @@ export default class MyPlugin extends Plugin {
           distance: calcDistance(selection, node)
         }))
         .sort((a: OMM.Node, b: OMM.Node) => a.distance - b.distance)
-
-      console.log('midpoints:\n', midpoints)
 
       if (midpoints.length > 0) {
         this.zoomToNode(midpoints[0].node)
@@ -557,14 +541,14 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.nodeNavigation('up'))
     this.hotkeys.push(this.nodeNavigation('down'))
 
-    this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
-    this.hotkeys.push(this.test())
+    // this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
+    // this.hotkeys.push(this.test())
 
-    this.patchMarkdownFileInfo()
+    // this.patchMarkdownFileInfo()
   }
 
   onunload() {
-    this.hotkeys.forEach(this.app.scope.unregister)
+    this.hotkeys.forEach(key => this.app.scope.unregister(key))
     this.intervalTimer.forEach(clearInterval)
   }
 
@@ -577,55 +561,8 @@ export default class MyPlugin extends Plugin {
   }
 }
 
-const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({[key]: A.prototype[key]}))
-const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({[key]: B.prototype[key]}))
-const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({[key]: C.prototype[key]}))
-
-Object.assign(MyPlugin.prototype, ...mixinA, ...mixinB, ...mixinC)
-
-class SampleModal extends Modal {
-  constructor(app: App) {
-    super(app)
-  }
-
-  onOpen() {
-    const {contentEl} = this
-    contentEl.setText('Woah!')
-  }
-
-  onClose() {
-    const {contentEl} = this
-    contentEl.empty()
-  }
-}
-
-class SampleSettingTab extends PluginSettingTab {
-  plugin: MyPlugin
-
-  constructor(app: App, plugin: MyPlugin) {
-    super(app, plugin)
-    this.plugin = plugin
-  }
-
-  display(): void {
-    const {containerEl} = this
-
-    containerEl.empty()
-
-    containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'})
-
-    containerEl.createEl('h1', {text: 'Heading 1'})
-
-    new Setting(containerEl)
-      .setName('Setting #1')
-      .setDesc('It\'s a secret')
-      .addText(text => text
-        .setPlaceholder('Enter your secret')
-        .setValue(this.plugin.settings.mySetting)
-        .onChange(async (value) => {
-          console.log('Secret: ' + value)
-          this.plugin.settings.mySetting = value
-          await this.plugin.saveSettings()
-        }))
-  }
-}
+// const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({[key]: A.prototype[key]}))
+// const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({[key]: B.prototype[key]}))
+// const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({[key]: C.prototype[key]}))
+//
+// Object.assign(MyPlugin.prototype, ...mixinA, ...mixinB, ...mixinC)
