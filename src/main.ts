@@ -1,5 +1,6 @@
-import {around} from 'monkey-around'
-import {App, KeymapEventHandler, Modal, Modifier, moment, Notice, Plugin, PluginSettingTab, Setting} from 'obsidian'
+import {KeymapEventHandler, Modifier, Plugin, Notice} from 'obsidian'
+import {Debounce} from './decorator'
+import {message} from './message'
 
 
 interface MyPluginSettings {
@@ -12,32 +13,7 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
   autoFocus: false,
 }
 
-function Debounce(delay: number = 100): MethodDecorator {
-  let lastTime = 0
-  let timer: NodeJS.Timeout
 
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value
-
-    descriptor.value = function (...args: any[]) {
-      const now = Date.now()
-      clearTimeout(timer)
-
-      if ((now - lastTime) < delay) {
-        return
-      }
-
-      timer = setTimeout(() => {
-        originalMethod.apply(this, args)
-        lastTime = 0
-      }, delay)
-
-      lastTime = now
-    }
-
-    return descriptor
-  }
-}
 
 type Position = [x: number, y: number]
 
@@ -49,19 +25,7 @@ interface Shortcut {
   vkey: string
 }
 
-class Error {
-  private errors = {
-    '1xx': 'illegal function invoking error',
-    '2xx': 'interaction error'
-  }
 
-  private errorCounter = [
-    {
-      code: '1xx',
-      count: 0,
-    }
-  ]
-}
 
 const directionMap = {
   'up': 'arrowUp',
@@ -84,7 +48,6 @@ const MACRO_TASK_DELAY = 50
 const EPSILON = 1
 
 const OFFSET_WEIGHT = 1.1
-
 
 export default class MyPlugin extends Plugin {
   settings: MyPluginSettings
@@ -128,7 +91,6 @@ export default class MyPlugin extends Plugin {
     const selections = this.canvas.selection
 
     if (selections.size === 0 || selections.size > 1) {
-      // console.error(`You are using \`getSingleSelection\` function! Expect selected node number is \`1\`, you select \`${selections.size}\``)
       return null
     }
 
@@ -213,7 +175,6 @@ export default class MyPlugin extends Plugin {
 
   view2Focus() {
     if (this.getSingleSelection() !== null) {
-      // console.error(`Not touch view!`)
       return
     }
 
@@ -231,8 +192,6 @@ export default class MyPlugin extends Plugin {
   focus2Edit() {
     const selection = this.getSingleSelection()
     if (!selection || !selection.isFocused || selection.isEditing) {
-      // todo: same error should only show once
-      // console.error(`You can't invoke \`focus2Edit\` for not in navigation view.`)
       return
     }
 
@@ -242,7 +201,6 @@ export default class MyPlugin extends Plugin {
   edit2Focus() {
     const selection = this.getSingleSelection()
     if (!selection || !selection.isEditing) {
-      // console.error(`You can't invoke \`edit2Focus\` for not in creating view.`)
       return
     }
 
@@ -279,6 +237,7 @@ export default class MyPlugin extends Plugin {
   }
 
   blurNode() {
+
     return this.app.scope.register(['Meta'], 'Escape', (e) => {
       console.log('Escape pressed')
 
@@ -471,44 +430,6 @@ export default class MyPlugin extends Plugin {
     console.log('selections:\n', this.getSingleSelection())
   }
 
-  test() {
-    return this.app.scope.register([], 't', (e) => {
-    })
-  }
-
-  patchMarkdownFileInfo() {
-    const patchEditor = () => {
-      const editorInfo = app.workspace.activeEditor
-      if (!editorInfo) return false
-
-      const patchEditorInfo = editorInfo.constructor
-
-      const uninstaller = around(patchEditorInfo.prototype, {
-        showPreview: (next) =>
-          function (e: any) {
-            next.call(this, e)
-            if (e) {
-              this.node.canvas.wrapperEl.focus()
-              this.node?.setIsEditing(false)
-            }
-          },
-      })
-      this.register(uninstaller)
-      return true
-    }
-
-    this.app.workspace.onLayoutReady(() => {
-      if (!patchEditor()) {
-        const evt = app.workspace.on('file-open', () => {
-          setTimeout(() => {
-            patchEditor() && app.workspace.offref(evt)
-          }, 100)
-        })
-        this.registerEvent(evt)
-      }
-    })
-  }
-
   createCanvas() {
     const timer = setInterval(() => {
       this.canvas = app.workspace.getLeavesOfType('canvas').first()?.view?.canvas
@@ -541,10 +462,7 @@ export default class MyPlugin extends Plugin {
     this.hotkeys.push(this.nodeNavigation('up'))
     this.hotkeys.push(this.nodeNavigation('down'))
 
-    // this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
-    // this.hotkeys.push(this.test())
-
-    // this.patchMarkdownFileInfo()
+    this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
   }
 
   onunload() {
