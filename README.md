@@ -81,7 +81,11 @@ Woah!
 
 Woah!
 
-- [ ] Auto layout avoid collapse
+- [ ] Collision detection to avoid overlap
+
+Woah!
+
+- [ ] Create different layout by shortcut or option
 
 Woah!
 
