@@ -8,18 +8,15 @@ const EPSILON = 1
 
 
 class Node {
-  // constructor(app: App, manifest: PluginManifest) {
-  //   super(app, manifest)
-  //
-  // }
+  main: LovelyMindmap
 
-  constructor() {
-    mixin(Node, LovelyMindmap)
+  constructor(main: LovelyMindmap) {
+    this.main = main
   }
 
 
   getSingleSelection(): M.Node | null {
-    const selections = this.canvas.selection
+    const selections = this.main.canvas.selection
 
     if (selections.size === 0 || selections.size > 1) {
       return null
@@ -31,7 +28,7 @@ class Node {
   getFromNodes(node: M.Node) {
     const fromNodeFilter = (edge: M.Edge) => edge.to.node.id === node.id
 
-    return this.canvas
+    return this.main.canvas
       .getEdgesForNode(node)
       .filter(fromNodeFilter)
       .map((edge: M.Edge) => edge.from.node)
@@ -40,7 +37,7 @@ class Node {
   getToNodes(node: M.Node) {
     const toNodeFilter = (edge: M.Edge) => edge.from.node.id === node.id
 
-    return this.canvas
+    return this.main.canvas
       .getEdgesForNode(node)
       .filter(toNodeFilter)
       .map((edge: M.Edge) => edge.to.node)
@@ -68,14 +65,14 @@ class Node {
     // node without from and to but has x,y,width,height attrs we called `Node`
     const rightSideNodeFilter = (node: M.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
 
-    const sibNodes = this.canvas
+    const sibNodes = this.main.canvas
       .getEdgesForNode(selectionNode)
       .filter(rightSideNodeFilter)
       .map((node: M.Edge) => node.to.node)
 
     const nextNodeY = Math.max(...sibNodes.map((node: M.Node) => node.y)) + EPSILON
 
-    const childNode = this.canvas.createTextNode({
+    const childNode = this.main.canvas.createTextNode({
       pos: {
         x: x + width + 200,
         y: nextNodeY,
@@ -89,9 +86,9 @@ class Node {
       save: true,
     })
 
-    const data = this.canvas.getData()
+    const data = this.main.canvas.getData()
 
-    this.canvas.importData({
+    this.main.canvas.importData({
       'edges': [
         ...data.edges,
         {
@@ -127,7 +124,7 @@ class Node {
     const fromNode = this.getFromNodes(selectionNode)[0]
     const toNodes = this.getToNodes(fromNode)
 
-    const willInsertedNode = this.canvas.createTextNode({
+    const willInsertedNode = this.main.canvas.createTextNode({
       pos: {
         x: x,
         y: isPressedShift ? y - EPSILON : y + EPSILON,
@@ -141,9 +138,9 @@ class Node {
       save: true,
     })
 
-    const data = this.canvas.getData()
+    const data = this.main.canvas.getData()
 
-    this.canvas.importData({
+    this.main.canvas.importData({
       'edges': [
         ...data.edges,
         {

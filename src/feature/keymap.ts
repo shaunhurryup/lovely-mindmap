@@ -9,11 +9,12 @@ import LovelyMindmap from '../main'
  */
 class Keymap {
   hotkeys: KeymapEventHandler[] = []
+  main: LovelyMindmap
+  node: Node
 
-
-  constructor(app: App) {
-    this.node = new Node()
-    this.app = app
+  constructor(main: LovelyMindmap) {
+    this.node = main.node
+    this.main = main
     // mixin(Keymap, Node)
     this.hotkeys = []
   }
@@ -22,22 +23,22 @@ class Keymap {
   help() {
     console.log('this:\n', this)
 
-    console.log('app:\n', this.app)
+    console.log('app:\n', this.main.app)
 
-    console.log('canvas:\n', this.canvas)
+    console.log('canvas:\n', this.main.canvas)
 
-    console.log('selections:\n', this.getSingleSelection())
+    console.log('selections:\n', this.node.getSingleSelection())
   }
 
   nodeNavigation() {
-    const selection = this.getSingleSelection()
+    const selection = this.node.getSingleSelection()
     if (!selection || selection.isEditing) {
       // const notice = new Notice('')
       // notice.setMessage('Press `cmd + Esc` to exit creating view')
       return
     }
 
-    const data = this.canvas.getViewportNodes()
+    const data = this.main.canvas.getViewportNodes()
 
 
     const offsetX = (a: M.Node, b: M.Node) => Math.abs(b.x - a.x)
@@ -81,7 +82,7 @@ class Keymap {
   }
 
   blurNode() {
-    const selection = this.getSingleSelection()
+    const selection = this.node.getSingleSelection()
     if (!selection) return
 
     if (selection.isEditing) {
@@ -96,7 +97,7 @@ class Keymap {
   }
 
   focusNode() {
-    const selection = this.getSingleSelection()
+    const selection = this.node.getSingleSelection()
 
     const isView = !selection
     if (isView) {
@@ -116,13 +117,12 @@ class Keymap {
     key: string | null,
     func: KeymapEventListener
   ): KeymapEventHandler {
-    console.log('keymap register register', this.app.scope.register)
-    return this.app.scope.register(arguments)
+    return this.main.app.scope.register(modifiers, key, func)
   }
 
   registerAll() {
     this.hotkeys.push(
-      this.register([], 'f', this.focusNode),
+      this.register([], 'f', this.focusNode.bind(this)),
       this.register(['Meta'], 'Escape', this.blurNode),
       this.register([], 'Tab', this.createChildren),
       this.register([], 'enter', this.createSibNode),
@@ -131,12 +131,12 @@ class Keymap {
       this.register(['Alt'], 'arrowRight', this.nodeNavigation),
       this.register(['Alt'], 'arrowUp', this.nodeNavigation),
       this.register(['Alt'], 'arrowDown', this.nodeNavigation),
-      this.register([], 'h', this.help)
+      this.register([], 'h', this.help.bind(this))
     )
   }
 
   unregisterAll() {
-    this.hotkeys.forEach(key => this.app.scope.unregister(key))
+    this.hotkeys.forEach(key => this.main.app.scope.unregister(key))
   }
 }
 

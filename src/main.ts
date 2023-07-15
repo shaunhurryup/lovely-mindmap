@@ -34,17 +34,14 @@ export default class LovelyMindmap extends Plugin{
   settings: MyPluginSettings
   canvas: any = null
   hotkeys2: any = []
-
   intervalTimer = new Map()
-  // getSingleSelection: () => M.Node | null
-  // getFromNodes: (node: M.Node) => M.Node[]
-  // getToNodes: (node: M.Node) => M.Node[]
+  node: Node
+  keymap: Keymap
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest)
-    new Keymap()
-    this.node = new Node()
-    this.keymap = new Keymap(app)
+    this.node = new Node(this)
+    this.keymap = new Keymap(this)
     // mixin(LovelyMindmap, Node, Keymap)
   }
 
