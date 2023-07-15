@@ -2,7 +2,8 @@ import {App, KeymapEventHandler, Modifier, Plugin, PluginManifest} from 'obsidia
 import {Debounce} from './decorator'
 import {filter} from 'builtin-modules'
 import {Node} from './feature/Node'
-import {calcDistance, findClosestNodeByBbox} from './tool'
+import {calcDistance, createId, findClosestNodeByBbox, mixin} from './tool'
+import {Keymap} from './feature/keymap'
 
 
 interface MyPluginSettings {
@@ -24,48 +25,27 @@ interface Shortcut {
 }
 
 
-const directionMap = {
-  'up': 'arrowUp',
-  'down': 'arrowDown',
-  'left': 'arrowLeft',
-  'right': 'arrowRight',
-}
-
-function mixin(target: Function, ...sources: Function[]) {
-  sources.forEach(source => {
-    Object.getOwnPropertyNames(source.prototype).forEach(name => {
-      target.prototype[name] = source.prototype[name];
-    });
-  });
-}
-
-
-const random = (e: number) => {
-  let t = []
-  for (let n = 0; n < e; n++) {
-    t.push((16 * Math.random() | 0).toString(16))
-  }
-  return t.join('')
-}
-
 const MACRO_TASK_DELAY = 50
 
-const EPSILON = 1
 
 const OFFSET_WEIGHT = 1.1
 
-export default class LovelyMindmap extends Plugin implements Node{
+export default class LovelyMindmap extends Plugin{
   settings: MyPluginSettings
   canvas: any = null
-  hotkeys: KeymapEventHandler[] = []
+  hotkeys2: any = []
+
   intervalTimer = new Map()
-  getSingleSelection: () => M.Node | null
-  getFromNodes: (node: M.Node) => M.Node[]
-  getToNodes: (node: M.Node) => M.Node[]
+  // getSingleSelection: () => M.Node | null
+  // getFromNodes: (node: M.Node) => M.Node[]
+  // getToNodes: (node: M.Node) => M.Node[]
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest)
-    mixin(LovelyMindmap, Node)
+    new Keymap()
+    this.node = new Node()
+    this.keymap = new Keymap(app)
+    // mixin(LovelyMindmap, Node, Keymap)
   }
 
 
@@ -160,217 +140,7 @@ export default class LovelyMindmap extends Plugin implements Node{
     this.canvas.deselectAll()
   }
 
-  focusNode() {
-    return this.app.scope.register([], 'f', () => {
-      const selection = this.getSingleSelection()
 
-      const isView = !selection
-      if (isView) {
-        this.view2Focus()
-        return
-      }
-
-      const isFocus = selection.isFocused === true
-      if (isFocus) {
-        this.focus2Edit()
-        return
-      }
-    })
-  }
-
-  blurNode() {
-
-    return this.app.scope.register(['Meta'], 'Escape', (e) => {
-      console.log('Escape pressed')
-
-      const selection = this.getSingleSelection()
-      if (!selection) return
-
-      if (selection.isEditing) {
-        this.edit2Focus()
-        return
-      }
-
-      if (selection.isFocused) {
-        this.focus2View()
-        return
-      }
-    })
-  }
-
-  @Debounce()
-  createChildren() {
-    const selectionNode = this.getSingleSelection()
-    if (!selectionNode || selectionNode.isEditing) return
-
-    const {
-      x,
-      y,
-      width,
-      height,
-    } = selectionNode
-
-    // node with from and to attrs we called `Edge`
-    // node without from and to but has x,y,width,height attrs we called `Node`
-    const rightSideNodeFilter = (node: M.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
-
-    const sibNodes = this.canvas
-      .getEdgesForNode(selectionNode)
-      .filter(rightSideNodeFilter)
-      .map((node: M.Edge) => node.to.node)
-
-    const nextNodeY = Math.max(...sibNodes.map((node: M.Node) => node.y)) + EPSILON
-
-    const childNode = this.canvas.createTextNode({
-      pos: {
-        x: x + width + 200,
-        y: nextNodeY,
-      },
-      size: {
-        height: height,
-        width: width
-      },
-      text: '',
-      focus: false,
-      save: true,
-    })
-
-    const data = this.canvas.getData()
-
-    this.canvas.importData({
-      'edges': [
-        ...data.edges,
-        {
-          'id': random(6),
-          'fromNode': selectionNode.id,
-          'fromSide': 'right',
-          'toNode': childNode.id,
-          'toSide': 'left',
-        }
-      ],
-      'nodes': data.nodes,
-    })
-
-    this.reflow(selectionNode, sibNodes.concat(childNode))
-
-    this.zoomToNode(childNode)
-  }
-
-  @Debounce()
-  createSibNode(_: unknown, shortcut: Shortcut) {
-    const selectionNode = this.getSingleSelection()
-    if (!selectionNode || selectionNode.isEditing) return
-
-    const {
-      x,
-      y,
-      width,
-      height,
-    } = selectionNode
-
-    const isPressedShift = shortcut.modifiers === 'Shift'
-
-    const fromNode = this.getFromNodes(selectionNode)[0]
-    const toNodes = this.getToNodes(fromNode)
-
-    const willInsertedNode = this.canvas.createTextNode({
-      pos: {
-        x: x,
-        y: isPressedShift ? y - EPSILON : y + EPSILON,
-      },
-      size: {
-        height,
-        width,
-      },
-      text: '',
-      focus: false,
-      save: true,
-    })
-
-    const data = this.canvas.getData()
-
-    this.canvas.importData({
-      'edges': [
-        ...data.edges,
-        {
-          'id': random(6),
-          'fromNode': fromNode.id,
-          'fromSide': 'right',
-          'toNode': willInsertedNode.id,
-          'toSide': 'left',
-        }
-      ],
-      'nodes': data.nodes,
-    })
-
-
-    this.reflow(fromNode, toNodes.concat(willInsertedNode))
-    this.zoomToNode(willInsertedNode)
-  }
-
-  nodeNavigation(direction: keyof typeof directionMap) {
-    return app.scope.register(['Alt'], directionMap[direction], () => {
-      const selection = this.getSingleSelection()
-      if (!selection || selection.isEditing) {
-        // const notice = new Notice('')
-        // notice.setMessage('Press `cmd + Esc` to exit creating view')
-        return
-      }
-
-      const data = this.canvas.getViewportNodes()
-
-
-      const offsetX = (a: M.Node, b: M.Node) => Math.abs(b.x - a.x)
-      const offsetY = (a: M.Node, b: M.Node) => Math.abs(b.y - a.y)
-      // fixed: 复数的非整次方为 NaN
-      // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/pow#return_value:~:text=base%20%3C%200%20and%20exponent%20is%20not%20an%20integer.
-      const endpointOffset = (a: M.Node, b: M.Node) => Math.min(
-        Math.abs(b.y - a.y + 2 / a.height),
-        Math.abs(b.y + b.height - a.y - 2 / a.height),
-        Math.abs(b.x - a.x + 2 / a.width),
-        Math.abs(b.x + b.width - a.x + 2 / a.width),
-      )
-      const calcDistance = (a: M.Node, b: M.Node) => (direction === 'left' || direction === 'right')
-        ? offsetX(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
-        : offsetY(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
-      const isSameDirection = (node: M.Node) => {
-        const notSelf = node.id !== selection.id
-        const strategies = {
-          right: notSelf && node.x > selection.x + selection.width,
-          left: notSelf && node.x + node.width < selection.x,
-          up: notSelf && node.y + node.height < selection.y,
-          down: notSelf && node.y > selection.y + selection.height,
-        }
-        return strategies[direction]
-      }
-
-      const midpoints = data
-        .filter(isSameDirection)
-        .map((node: M.Node) => ({
-          node,
-          offsetX: offsetX(selection, node),
-          offsetY: offsetY(selection, node),
-          endpointOffset: endpointOffset(selection, node),
-          distance: calcDistance(selection, node)
-        }))
-        .sort((a: M.Node, b: M.Node) => a.distance - b.distance)
-
-      if (midpoints.length > 0) {
-        this.zoomToNode(midpoints[0].node)
-      }
-    })
-  }
-
-  @Debounce()
-  help() {
-    console.log('this:\n', this)
-
-    console.log('app:\n', this.app)
-
-    console.log('canvas:\n', this.canvas)
-
-    console.log('selections:\n', this.getSingleSelection())
-  }
 
   createCanvas() {
     const timer = setInterval(() => {
@@ -388,27 +158,18 @@ export default class LovelyMindmap extends Plugin implements Node{
   async onload() {
     await this.loadSettings()
 
+    // setTimeout(() => this.registerAll(), 1000)
+    // console.log(
+    //   this.hotkeys,
+    //   this.hotkeys2,
+    // )
+    this.keymap.registerAll()
+
     this.createCanvas()
-
-    this.hotkeys.push(this.focusNode())
-    this.hotkeys.push(this.blurNode())
-
-    this.hotkeys.push(this.app.scope.register([], 'Tab', this.createChildren.bind(this)))
-
-    this.hotkeys.push(this.app.scope.register([], 'enter', this.createSibNode.bind(this)))
-
-    this.hotkeys.push(this.app.scope.register(['Shift'], 'enter', this.createSibNode.bind(this)))
-
-    this.hotkeys.push(this.nodeNavigation('right'))
-    this.hotkeys.push(this.nodeNavigation('left'))
-    this.hotkeys.push(this.nodeNavigation('up'))
-    this.hotkeys.push(this.nodeNavigation('down'))
-
-    this.hotkeys.push(this.app.scope.register([], 'h', this.help.bind(this)))
   }
 
   onunload() {
-    this.hotkeys.forEach(key => this.app.scope.unregister(key))
+    this.keymap.unregisterAll()
     this.intervalTimer.forEach(clearInterval)
   }
 

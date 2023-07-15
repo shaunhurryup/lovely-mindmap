@@ -1,3 +1,11 @@
+function mixin(target: Function, ...sources: Function[]) {
+  sources.forEach(source => {
+    Object.getOwnPropertyNames(source.prototype).forEach(name => {
+      target.prototype[name] = source.prototype[name];
+    });
+  });
+}
+
 function calcDistance(a: M.Position, b: M.Position) {
   return Math.sqrt(
     (a[0] - b[0]) ** 2 +
@@ -36,5 +44,12 @@ function findClosestNodeByBbox(pos: M.Position, nodes: M.Node[]): { node: M.Node
   })
 }
 
+function createId(e: number) {
+  let t = []
+  for (let n = 0; n < e; n++) {
+    t.push((16 * Math.random() | 0).toString(16))
+  }
+  return t.join('')
+}
 
-export { calcDistance, findClosestNodeByBbox }
+export { mixin, calcDistance, findClosestNodeByBbox, createId }
