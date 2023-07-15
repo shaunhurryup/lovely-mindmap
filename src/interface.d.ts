@@ -1,4 +1,6 @@
-declare namespace OMM {
+declare namespace M {
+  type Position = [x: number, y: number]
+
   interface MyPluginSettings {
     mySetting: string;
   }

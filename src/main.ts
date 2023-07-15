@@ -1,6 +1,8 @@
-import {KeymapEventHandler, Modifier, Plugin, Notice} from 'obsidian'
+import {App, KeymapEventHandler, Modifier, Plugin, PluginManifest} from 'obsidian'
 import {Debounce} from './decorator'
-import {message} from './message'
+import {filter} from 'builtin-modules'
+import {Node} from './feature/Node'
+import {calcDistance, findClosestNodeByBbox} from './tool'
 
 
 interface MyPluginSettings {
@@ -13,10 +15,6 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
   autoFocus: false,
 }
 
-
-
-type Position = [x: number, y: number]
-
 type NewNodeSize = 'inherit' | { width: number, height: number }
 
 interface Shortcut {
@@ -26,12 +24,19 @@ interface Shortcut {
 }
 
 
-
 const directionMap = {
   'up': 'arrowUp',
   'down': 'arrowDown',
   'left': 'arrowLeft',
   'right': 'arrowRight',
+}
+
+function mixin(target: Function, ...sources: Function[]) {
+  sources.forEach(source => {
+    Object.getOwnPropertyNames(source.prototype).forEach(name => {
+      target.prototype[name] = source.prototype[name];
+    });
+  });
 }
 
 
@@ -49,11 +54,20 @@ const EPSILON = 1
 
 const OFFSET_WEIGHT = 1.1
 
-export default class MyPlugin extends Plugin {
+export default class LovelyMindmap extends Plugin implements Node{
   settings: MyPluginSettings
   canvas: any = null
   hotkeys: KeymapEventHandler[] = []
   intervalTimer = new Map()
+  getSingleSelection: () => M.Node | null
+  getFromNodes: (node: M.Node) => M.Node[]
+  getToNodes: (node: M.Node) => M.Node[]
+
+  constructor(app: App, manifest: PluginManifest) {
+    super(app, manifest)
+    mixin(LovelyMindmap, Node)
+  }
+
 
   // sibNodes must have x,y,height,width attributes
   reflow(parentNode, sibNodes) {
@@ -87,21 +101,11 @@ export default class MyPlugin extends Plugin {
     })
   }
 
-  getSingleSelection(): OMM.Node | null {
-    const selections = this.canvas.selection
-
-    if (selections.size === 0 || selections.size > 1) {
-      return null
-    }
-
-    return selections.values().next().value
-  }
-
-  editToNode(node: OMM.Node) {
+  editToNode(node: M.Node) {
     setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
   }
 
-  zoomToNode(node: OMM.Node) {
+  zoomToNode(node: M.Node) {
     this.canvas.selectOnly(node)
     this.canvas.zoomToSelection()
 
@@ -111,81 +115,19 @@ export default class MyPlugin extends Plugin {
     }
   }
 
-  getFromNodes(target: OMM.Node) {
-    const fromNodeFilter = (edge: OMM.Edge) => edge.to.node.id === target.id
-
-    return this.canvas
-      .getEdgesForNode(target)
-      .filter(fromNodeFilter)
-      .map((edge: OMM.Edge) => edge.from.node)
-  }
-
-  getSibNodes(target: OMM.Node) {
-    const fromNodes = this.getFromNodes(target)
-    const toNodes = this.getToNodes(fromNodes[0])
-    return toNodes.filter(node => node.id !== target.id)
-  }
-
-  getToNodes(target: OMM.Node) {
-    const toNodeFilter = (edge: OMM.Edge) => edge.from.node.id === target.id
-
-    return this.canvas
-      .getEdgesForNode(target)
-      .filter(toNodeFilter)
-      .map((edge: OMM.Edge) => edge.to.node)
-  }
-
-  calcDistance(a: Position, b: Position) {
-    return Math.sqrt(
-      (a[0] - b[0]) ** 2 +
-      (a[1] - b[1]) ** 2
-    )
-  }
-
-  findClosestNodeByBbox(pos: Position, nodes: OMM.Node[]): { node: OMM.Node, distance: number } {
-    return nodes.reduce((prev, cur, idx) => {
-      const a: Position = [cur.bbox.minX, cur.bbox.minY]
-      const b: Position = [cur.bbox.maxX, cur.bbox.minY]
-      const c: Position = [cur.bbox.minX, cur.bbox.maxY]
-      const d: Position = [cur.bbox.maxX, cur.bbox.maxY]
-      // todo: at least two or more point in each node can be ignored
-      const distance = Math.min(
-        this.calcDistance(pos, a),
-        this.calcDistance(pos, b),
-        this.calcDistance(pos, c),
-        this.calcDistance(pos, d),
-      )
-
-      if (idx === 0) {
-        return {
-          node: cur,
-          distance: distance,
-        }
-      }
-
-      return distance < prev.distance
-        ? {node: cur, distance}
-        : prev
-
-    }, {
-      node: {} as any,
-      distance: 0,
-    })
-  }
-
   view2Focus() {
     if (this.getSingleSelection() !== null) {
       return
     }
 
     const viewportBBox = this.canvas.getViewportBBox()
-    const centerPoint: Position = [
+    const centerPoint: M.Position = [
       (viewportBBox.minX + viewportBBox.maxX) / 2,
       (viewportBBox.minY + viewportBBox.maxY) / 2,
     ]
 
     const viewportNodes = this.canvas.getViewportNodes()
-    const res = this.findClosestNodeByBbox(centerPoint, viewportNodes)
+    const res = findClosestNodeByBbox(centerPoint, viewportNodes)
     this.zoomToNode(res.node)
   }
 
@@ -270,14 +212,14 @@ export default class MyPlugin extends Plugin {
 
     // node with from and to attrs we called `Edge`
     // node without from and to but has x,y,width,height attrs we called `Node`
-    const rightSideNodeFilter = (node: OMM.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
+    const rightSideNodeFilter = (node: M.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
 
     const sibNodes = this.canvas
       .getEdgesForNode(selectionNode)
       .filter(rightSideNodeFilter)
-      .map((node: OMM.Edge) => node.to.node)
+      .map((node: M.Edge) => node.to.node)
 
-    const nextNodeY = Math.max(...sibNodes.map((node: OMM.Node) => node.y)) + EPSILON
+    const nextNodeY = Math.max(...sibNodes.map((node: M.Node) => node.y)) + EPSILON
 
     const childNode = this.canvas.createTextNode({
       pos: {
@@ -378,20 +320,20 @@ export default class MyPlugin extends Plugin {
       const data = this.canvas.getViewportNodes()
 
 
-      const offsetX = (a: OMM.Node, b: OMM.Node) => Math.abs(b.x - a.x)
-      const offsetY = (a: OMM.Node, b: OMM.Node) => Math.abs(b.y - a.y)
+      const offsetX = (a: M.Node, b: M.Node) => Math.abs(b.x - a.x)
+      const offsetY = (a: M.Node, b: M.Node) => Math.abs(b.y - a.y)
       // fixed: 复数的非整次方为 NaN
       // @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/pow#return_value:~:text=base%20%3C%200%20and%20exponent%20is%20not%20an%20integer.
-      const endpointOffset = (a: OMM.Node, b: OMM.Node) => Math.min(
+      const endpointOffset = (a: M.Node, b: M.Node) => Math.min(
         Math.abs(b.y - a.y + 2 / a.height),
         Math.abs(b.y + b.height - a.y - 2 / a.height),
         Math.abs(b.x - a.x + 2 / a.width),
         Math.abs(b.x + b.width - a.x + 2 / a.width),
       )
-      const calcDistance = (a: OMM.Node, b: OMM.Node) => (direction === 'left' || direction === 'right')
+      const calcDistance = (a: M.Node, b: M.Node) => (direction === 'left' || direction === 'right')
         ? offsetX(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
         : offsetY(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
-      const isSameDirection = (node: OMM.Node) => {
+      const isSameDirection = (node: M.Node) => {
         const notSelf = node.id !== selection.id
         const strategies = {
           right: notSelf && node.x > selection.x + selection.width,
@@ -404,14 +346,14 @@ export default class MyPlugin extends Plugin {
 
       const midpoints = data
         .filter(isSameDirection)
-        .map((node: OMM.Node) => ({
+        .map((node: M.Node) => ({
           node,
           offsetX: offsetX(selection, node),
           offsetY: offsetY(selection, node),
           endpointOffset: endpointOffset(selection, node),
           distance: calcDistance(selection, node)
         }))
-        .sort((a: OMM.Node, b: OMM.Node) => a.distance - b.distance)
+        .sort((a: M.Node, b: M.Node) => a.distance - b.distance)
 
       if (midpoints.length > 0) {
         this.zoomToNode(midpoints[0].node)
@@ -478,9 +420,3 @@ export default class MyPlugin extends Plugin {
     await this.saveData(this.settings)
   }
 }
-
-// const mixinA = Reflect.ownKeys(A.prototype).filter(key => key !== 'constructor').map(key => ({[key]: A.prototype[key]}))
-// const mixinB = Reflect.ownKeys(B.prototype).filter(key => key !== 'constructor').map(key => ({[key]: B.prototype[key]}))
-// const mixinC = Reflect.ownKeys(C.prototype).filter(key => key !== 'constructor').map(key => ({[key]: C.prototype[key]}))
-//
-// Object.assign(MyPlugin.prototype, ...mixinA, ...mixinB, ...mixinC)
