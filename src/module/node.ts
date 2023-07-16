@@ -107,7 +107,7 @@ class Node {
       'edges': [
         ...data.edges,
         {
-          'id': uuid(6),
+          'id': uuid(),
           'fromNode': selection.id,
           'fromSide': 'right',
           'toNode': childNode.id,
@@ -160,7 +160,7 @@ class Node {
       'edges': [
         ...data.edges,
         {
-          'id': uuid(6),
+          'id': uuid(),
           'fromNode': fromNode.id,
           'fromSide': 'right',
           'toNode': willInsertedNode.id,

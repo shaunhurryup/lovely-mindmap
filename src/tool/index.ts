@@ -65,7 +65,7 @@ function findClosestNodeByBbox(pos: M.Position, nodes: M.Node[]): { node: M.Node
 }
 
 /**
- * generate a 12-bit number
+ * Create a 64-bit random number of lengths 12
  */
 function uuid() {
   const first = Math.floor(Math.random() * 9 + 1)

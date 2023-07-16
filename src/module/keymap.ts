@@ -2,7 +2,7 @@ import {KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from '
 import {Node} from './node'
 import LovelyMindmap from '../main'
 import autobind from 'autobind-decorator'
-import {debounce, uuid} from '../tool'
+import {debounce} from '../tool'
 
 
 /**
@@ -37,7 +37,7 @@ class Keymap {
       // notice.setMessage('Press `cmd + Esc` to exit creating view')
       return
     }
-    const { OFFSET_WEIGHT } = this.main.setting
+    const {OFFSET_WEIGHT} = this.main.setting
 
     const data = this.main.canvas.getViewportNodes()
 

@@ -24,14 +24,15 @@ export default class LovelyMindmap extends Plugin{
 
   createCanvasInstance() {
     const timer = setInterval(() => {
+      // @ts-ignore
       this.canvas = app.workspace.getLeavesOfType('canvas').first()?.view?.canvas
       if (!!this.canvas) {
-        clearInterval(this.intervalTimer.get('canvasInitial'))
+        clearInterval(this.intervalTimer.get('canvas'))
       }
     }, 1000)
 
-    if (!this.intervalTimer.get('canvasInitial')) {
-      this.intervalTimer.set('canvasInitial', timer)
+    if (!this.intervalTimer.get('canvas')) {
+      this.intervalTimer.set('canvas', timer)
     }
   }
 
