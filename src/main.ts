@@ -28,7 +28,6 @@ interface Shortcut {
 const MACRO_TASK_DELAY = 50
 
 
-const OFFSET_WEIGHT = 1.1
 
 export default class LovelyMindmap extends Plugin{
   settings: MyPluginSettings

@@ -1,8 +1,12 @@
-import {App, KeymapEventHandler, KeymapEventListener, Modifier} from 'obsidian'
+import {App, KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from 'obsidian'
 import {mixin} from '../tool'
 import {Node} from './Node'
 import {Debounce} from '../decorator'
 import LovelyMindmap from '../main'
+
+
+const OFFSET_WEIGHT = 1.1
+
 
 /**
  * Register and manage your keymap
@@ -13,10 +17,8 @@ class Keymap {
   node: Node
 
   constructor(main: LovelyMindmap) {
-    this.node = main.node
     this.main = main
-    // mixin(Keymap, Node)
-    this.hotkeys = []
+    this.node = main.node
   }
 
   @Debounce()
@@ -30,7 +32,10 @@ class Keymap {
     console.log('selections:\n', this.node.getSingleSelection())
   }
 
-  nodeNavigation() {
+  nodeNavigation(_: unknown, context: KeymapContext) {
+    type Key = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
+    const { key } = context as Omit<KeymapContext, 'key'> & { key: Key }
+
     const selection = this.node.getSingleSelection()
     if (!selection || selection.isEditing) {
       // const notice = new Notice('')
@@ -51,18 +56,18 @@ class Keymap {
       Math.abs(b.x - a.x + 2 / a.width),
       Math.abs(b.x + b.width - a.x + 2 / a.width),
     )
-    const calcDistance = (a: M.Node, b: M.Node) => (direction === 'left' || direction === 'right')
+    const calcDistance = (a: M.Node, b: M.Node) => (key === 'ArrowLeft' || key === 'ArrowRight')
       ? offsetX(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
       : offsetY(a, b) + endpointOffset(a, b) ** OFFSET_WEIGHT
     const isSameDirection = (node: M.Node) => {
       const notSelf = node.id !== selection.id
       const strategies = {
-        right: notSelf && node.x > selection.x + selection.width,
-        left: notSelf && node.x + node.width < selection.x,
-        up: notSelf && node.y + node.height < selection.y,
-        down: notSelf && node.y > selection.y + selection.height,
+        ArrowRight: notSelf && node.x > selection.x + selection.width,
+        ArrowLeft: notSelf && node.x + node.width < selection.x,
+        ArrowUp: notSelf && node.y + node.height < selection.y,
+        ArrowDown: notSelf && node.y > selection.y + selection.height,
       }
-      return strategies[direction]
+      return strategies[key]
     }
 
     const midpoints = data
@@ -77,7 +82,7 @@ class Keymap {
       .sort((a: M.Node, b: M.Node) => a.distance - b.distance)
 
     if (midpoints.length > 0) {
-      this.zoomToNode(midpoints[0].node)
+      this.main.zoomToNode(midpoints[0].node)
     }
   }
 
@@ -127,10 +132,10 @@ class Keymap {
       this.register([], 'Tab', this.createChildren),
       this.register([], 'enter', this.createSibNode),
       this.register(['Shift'], 'enter', this.createSibNode),
-      this.register(['Alt'], 'arrowLeft', this.nodeNavigation),
-      this.register(['Alt'], 'arrowRight', this.nodeNavigation),
-      this.register(['Alt'], 'arrowUp', this.nodeNavigation),
-      this.register(['Alt'], 'arrowDown', this.nodeNavigation),
+      this.register(['Alt'], 'arrowLeft', this.nodeNavigation.bind(this)),
+      this.register(['Alt'], 'arrowRight', this.nodeNavigation.bind(this)),
+      this.register(['Alt'], 'arrowUp', this.nodeNavigation.bind(this)),
+      this.register(['Alt'], 'arrowDown', this.nodeNavigation.bind(this)),
       this.register([], 'h', this.help.bind(this))
     )
   }
