@@ -2,14 +2,14 @@ import {KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from '
 import {Node} from './node'
 import {Debounce} from '../decorator'
 import LovelyMindmap from '../main'
+import autobind from 'autobind-decorator'
 
-
-const OFFSET_WEIGHT = 1.1
 
 
 /**
  * Register and manage your keymap
  */
+@autobind
 class Keymap {
   hotkeys: KeymapEventHandler[] = []
   main: LovelyMindmap
@@ -33,7 +33,7 @@ class Keymap {
 
   nodeNavigation(_: unknown, context: KeymapContext) {
     type Key = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
-    const { key } = context as Omit<KeymapContext, 'key'> & { key: Key }
+    const {key} = context as Omit<KeymapContext, 'key'> & { key: Key }
 
     const selection = this.node.getSingleSelection()
     if (!selection || selection.isEditing) {
@@ -41,6 +41,7 @@ class Keymap {
       // notice.setMessage('Press `cmd + Esc` to exit creating view')
       return
     }
+    const { OFFSET_WEIGHT } = this.main.setting
 
     const data = this.main.canvas.getViewportNodes()
 
@@ -81,37 +82,32 @@ class Keymap {
       .sort((a: M.Node, b: M.Node) => a.distance - b.distance)
 
     if (midpoints.length > 0) {
-      this.main.zoomToNode(midpoints[0].node)
+      this.main.view.zoomToNode(midpoints[0].node)
     }
   }
 
   blurNode() {
-    const selection = this.node.getSingleSelection()
-    if (!selection) return
-
-    if (selection.isEditing) {
-      this.edit2Focus()
+    if (this.main.view.isCreating()) {
+      this.main.view.creation2Navigation()
       return
     }
 
-    if (selection.isFocused) {
-      this.focus2View()
+    if (this.main.view.isNavigating()) {
+      this.main.view.useTouch()
       return
     }
   }
 
-  focusNode() {
-    const selection = this.node.getSingleSelection()
 
-    const isView = !selection
-    if (isView) {
-      this.view2Focus()
+  focusNode() {
+    if (this.main.view.isTouching()) {
+      this.main.view.touch2Navigation()
       return
     }
 
-    const isFocus = selection.isFocused === true
-    if (isFocus) {
-      this.focus2Edit()
+    const navigationNode = this.main.node.getNavigationNode()
+    if (!!navigationNode) {
+      this.main.view.useCreation(navigationNode)
       return
     }
   }
@@ -126,16 +122,16 @@ class Keymap {
 
   registerAll() {
     this.hotkeys.push(
-      this.register([], 'f', this.focusNode.bind(this)),
+      this.register([], 'f', this.focusNode),
       this.register(['Meta'], 'Escape', this.blurNode),
-      this.register([], 'Tab', this.createChildren),
-      this.register([], 'enter', this.createSibNode),
-      this.register(['Shift'], 'enter', this.createSibNode),
-      this.register(['Alt'], 'arrowLeft', this.nodeNavigation.bind(this)),
-      this.register(['Alt'], 'arrowRight', this.nodeNavigation.bind(this)),
-      this.register(['Alt'], 'arrowUp', this.nodeNavigation.bind(this)),
-      this.register(['Alt'], 'arrowDown', this.nodeNavigation.bind(this)),
-      this.register([], 'h', this.help.bind(this))
+      this.register([], 'Tab', this.main.node.createChildren),
+      this.register([], 'enter', this.main.node.createSibNode),
+      this.register(['Shift'], 'enter', this.main.node.createSibNode),
+      this.register(['Alt'], 'arrowLeft', this.nodeNavigation),
+      this.register(['Alt'], 'arrowRight', this.nodeNavigation),
+      this.register(['Alt'], 'arrowUp', this.nodeNavigation),
+      this.register(['Alt'], 'arrowDown', this.nodeNavigation),
+      this.register([], 'h', this.help)
     )
   }
 
@@ -144,4 +140,4 @@ class Keymap {
   }
 }
 
-export { Keymap }
+export {Keymap}

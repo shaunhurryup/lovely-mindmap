@@ -1,17 +1,30 @@
 import {calcDistance, createId, mixin} from '../tool'
 import LovelyMindmap from '../main'
-import {App, PluginManifest} from 'obsidian'
+import {App, KeymapContext, PluginManifest} from 'obsidian'
 import {Debounce} from '../decorator'
+import autobind from 'autobind-decorator'
 
 
-const EPSILON = 1
-
-
+@autobind
 class Node {
   main: LovelyMindmap
 
   constructor(main: LovelyMindmap) {
     this.main = main
+  }
+
+  getNavigationNode(): M.Node | null {
+    const node = this.getSingleSelection()
+    if (!node || !node.isFocused || node.isEditing) return null
+
+    return node
+  }
+
+  getCreationNode(): M.Node | null {
+    const node = this.getSingleSelection()
+    if (!node || !node.isFocused || !node.isEditing) return null
+
+    return node
   }
 
   getSelection(): Set<M.Node> {
@@ -54,26 +67,26 @@ class Node {
 
   @Debounce()
   createChildren() {
-    const selectionNode = this.getSingleSelection()
-    if (!selectionNode || selectionNode.isEditing) return
+    const selection = this.getNavigationNode()
+    if (!selection) return
 
     const {
       x,
       y,
       width,
       height,
-    } = selectionNode
+    } = selection
 
     // node with from and to attrs we called `Edge`
     // node without from and to but has x,y,width,height attrs we called `Node`
-    const rightSideNodeFilter = (node: M.Edge) => node?.to?.side === 'left' && selectionNode.id !== node?.to?.node?.id
+    const rightSideNodeFilter = (node: M.Edge) => node?.to?.side === 'left' && selection.id !== node?.to?.node?.id
 
     const sibNodes = this.main.canvas
-      .getEdgesForNode(selectionNode)
+      .getEdgesForNode(selection)
       .filter(rightSideNodeFilter)
       .map((node: M.Edge) => node.to.node)
 
-    const nextNodeY = Math.max(...sibNodes.map((node: M.Node) => node.y)) + EPSILON
+    const nextNodeY = Math.max(...sibNodes.map((node: M.Node) => node.y)) + this.main.setting.EPSILON
 
     const childNode = this.main.canvas.createTextNode({
       pos: {
@@ -96,7 +109,7 @@ class Node {
         ...data.edges,
         {
           'id': createId(6),
-          'fromNode': selectionNode.id,
+          'fromNode': selection.id,
           'fromSide': 'right',
           'toNode': childNode.id,
           'toSide': 'left',
@@ -105,27 +118,28 @@ class Node {
       'nodes': data.nodes,
     })
 
-    this.reflow(selectionNode, sibNodes.concat(childNode))
+    this.main.layout.useSide(selection, sibNodes.concat(childNode))
 
-    this.zoomToNode(childNode)
+    this.main.view.zoomToNode(childNode)
   }
 
   @Debounce()
-  createSibNode(_: unknown, shortcut: Shortcut) {
-    const selectionNode = this.getSingleSelection()
-    if (!selectionNode || selectionNode.isEditing) return
+  createSibNode(_: unknown, context: KeymapContext) {
+    const selection = this.getNavigationNode()
+    if (!selection) return
 
     const {
       x,
       y,
       width,
       height,
-    } = selectionNode
+    } = selection
+    const { EPSILON } = this.main.setting
 
-    const isPressedShift = shortcut.modifiers === 'Shift'
+    const isPressedShift = context.modifiers === 'Shift'
 
-    const fromNode = this.getFromNodes(selectionNode)[0]
-    const toNodes = this.getToNodes(fromNode)
+    const fromNode = this.main.node.getFromNodes(selection)[0]
+    const toNodes = this.main.node.getToNodes(fromNode)
 
     const willInsertedNode = this.main.canvas.createTextNode({
       pos: {
@@ -158,8 +172,8 @@ class Node {
     })
 
 
-    this.reflow(fromNode, toNodes.concat(willInsertedNode))
-    this.zoomToNode(willInsertedNode)
+    this.main.layout.useSide(fromNode, toNodes.concat(willInsertedNode))
+    this.main.view.zoomToNode(willInsertedNode)
   }
 }
 

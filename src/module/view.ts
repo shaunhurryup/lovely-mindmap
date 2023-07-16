@@ -19,6 +19,14 @@ class View {
   isTouching() {
     return this.main.node.getSelection().size === 0
   }
+
+  isNavigating() {
+    const node = this.main.node.getSingleSelection()
+    if (!node) return false
+
+    return node.isFocused && !node.isEditing
+  }
+
   isCreating() {
     const node = this.main.node.getSingleSelection()
     if (!node) return false
@@ -32,7 +40,7 @@ class View {
 
   useCreation(node: M.Node) {
     setTimeout(
-      node.startEditing,
+      () => node.startEditing(),
       this.main.setting.MACRO_TASK_DELAY
     )
   }
@@ -62,7 +70,7 @@ class View {
     this.main.canvas.selectOnly(node)
     this.main.canvas.zoomToSelection()
 
-    if (this.main.settings.autoFocus) {
+    if (this.main.setting.autoFocus) {
       this.useCreation(node)
     }
   }
