@@ -14,6 +14,9 @@ class Node {
     this.main = main
   }
 
+  getSelection(): Set<M.Node> {
+    return this.main.canvas.selection
+  }
 
   getSingleSelection(): M.Node | null {
     const selections = this.main.canvas.selection

@@ -1,6 +1,5 @@
-import {App, KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from 'obsidian'
-import {mixin} from '../tool'
-import {Node} from './Node'
+import {KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from 'obsidian'
+import {Node} from './node'
 import {Debounce} from '../decorator'
 import LovelyMindmap from '../main'
 
@@ -29,7 +28,7 @@ class Keymap {
 
     console.log('canvas:\n', this.main.canvas)
 
-    console.log('selections:\n', this.node.getSingleSelection())
+    console.log('selections:\n', this.main.canvas.selection.values().next())
   }
 
   nodeNavigation(_: unknown, context: KeymapContext) {

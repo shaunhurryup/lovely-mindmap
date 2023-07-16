@@ -1,9 +1,5 @@
-import {App, KeymapEventHandler, Modifier, Plugin, PluginManifest} from 'obsidian'
-import {Debounce} from './decorator'
-import {filter} from 'builtin-modules'
-import {Node} from './feature/Node'
-import {calcDistance, createId, findClosestNodeByBbox, mixin} from './tool'
-import {Keymap} from './feature/keymap'
+import {App, Modifier, Plugin, PluginManifest} from 'obsidian'
+import {Keymap, Node, Setting, View} from './module'
 
 
 interface MyPluginSettings {
@@ -25,10 +21,6 @@ interface Shortcut {
 }
 
 
-const MACRO_TASK_DELAY = 50
-
-
-
 export default class LovelyMindmap extends Plugin{
   settings: MyPluginSettings
   canvas: any = null
@@ -36,11 +28,15 @@ export default class LovelyMindmap extends Plugin{
   intervalTimer = new Map()
   node: Node
   keymap: Keymap
+  view: View
+  setting: Setting
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest)
     this.node = new Node(this)
     this.keymap = new Keymap(this)
+    this.view = new View(this)
+    this.setting = new Setting(this)
     // mixin(LovelyMindmap, Node, Keymap)
   }
 
@@ -77,66 +73,6 @@ export default class LovelyMindmap extends Plugin{
     })
   }
 
-  editToNode(node: M.Node) {
-    setTimeout(() => node.startEditing(), MACRO_TASK_DELAY)
-  }
-
-  zoomToNode(node: M.Node) {
-    this.canvas.selectOnly(node)
-    this.canvas.zoomToSelection()
-
-    // 魔法打败魔法
-    if (DEFAULT_SETTINGS.autoFocus) {
-      this.editToNode(node)
-    }
-  }
-
-  view2Focus() {
-    if (this.getSingleSelection() !== null) {
-      return
-    }
-
-    const viewportBBox = this.canvas.getViewportBBox()
-    const centerPoint: M.Position = [
-      (viewportBBox.minX + viewportBBox.maxX) / 2,
-      (viewportBBox.minY + viewportBBox.maxY) / 2,
-    ]
-
-    const viewportNodes = this.canvas.getViewportNodes()
-    const res = findClosestNodeByBbox(centerPoint, viewportNodes)
-    this.zoomToNode(res.node)
-  }
-
-  focus2Edit() {
-    const selection = this.getSingleSelection()
-    if (!selection || !selection.isFocused || selection.isEditing) {
-      return
-    }
-
-    this.editToNode(selection)
-  }
-
-  edit2Focus() {
-    const selection = this.getSingleSelection()
-    if (!selection || !selection.isEditing) {
-      return
-    }
-
-    selection.blur()
-    // hack: blur will lose selection style
-    selection.focus()
-  }
-
-  focus2View() {
-    const selection = this.getSingleSelection()
-    if (!selection) {
-      return
-    }
-
-    this.canvas.deselectAll()
-  }
-
-
 
   createCanvas() {
     const timer = setInterval(() => {
@@ -153,14 +89,7 @@ export default class LovelyMindmap extends Plugin{
 
   async onload() {
     await this.loadSettings()
-
-    // setTimeout(() => this.registerAll(), 1000)
-    // console.log(
-    //   this.hotkeys,
-    //   this.hotkeys2,
-    // )
     this.keymap.registerAll()
-
     this.createCanvas()
   }
 
