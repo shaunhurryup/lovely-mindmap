@@ -1,7 +1,6 @@
-import {calcDistance, createId, mixin} from '../tool'
+import {uuid, debounce} from '../tool'
 import LovelyMindmap from '../main'
-import {App, KeymapContext, PluginManifest} from 'obsidian'
-import {Debounce} from '../decorator'
+import {KeymapContext} from 'obsidian'
 import autobind from 'autobind-decorator'
 
 
@@ -65,7 +64,7 @@ class Node {
     return toNodes.filter((node: M.Node) => node.id !== target.id)
   }
 
-  @Debounce()
+  @debounce()
   createChildren() {
     const selection = this.getNavigationNode()
     if (!selection) return
@@ -108,7 +107,7 @@ class Node {
       'edges': [
         ...data.edges,
         {
-          'id': createId(6),
+          'id': uuid(6),
           'fromNode': selection.id,
           'fromSide': 'right',
           'toNode': childNode.id,
@@ -123,7 +122,7 @@ class Node {
     this.main.view.zoomToNode(childNode)
   }
 
-  @Debounce()
+  @debounce()
   createSibNode(_: unknown, context: KeymapContext) {
     const selection = this.getNavigationNode()
     if (!selection) return
@@ -161,7 +160,7 @@ class Node {
       'edges': [
         ...data.edges,
         {
-          'id': createId(6),
+          'id': uuid(6),
           'fromNode': fromNode.id,
           'fromSide': 'right',
           'toNode': willInsertedNode.id,

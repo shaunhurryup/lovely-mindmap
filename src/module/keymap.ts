@@ -1,9 +1,8 @@
 import {KeymapContext, KeymapEventHandler, KeymapEventListener, Modifier} from 'obsidian'
 import {Node} from './node'
-import {Debounce} from '../decorator'
 import LovelyMindmap from '../main'
 import autobind from 'autobind-decorator'
-
+import {debounce, uuid} from '../tool'
 
 
 /**
@@ -20,14 +19,11 @@ class Keymap {
     this.node = main.node
   }
 
-  @Debounce()
+  @debounce()
   help() {
     console.log('this:\n', this)
-
     console.log('app:\n', this.main.app)
-
     console.log('canvas:\n', this.main.canvas)
-
     console.log('selections:\n', this.main.canvas.selection.values().next())
   }
 
