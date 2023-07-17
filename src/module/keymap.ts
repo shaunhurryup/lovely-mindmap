@@ -20,7 +20,9 @@ class Keymap {
   }
 
   @debounce()
-  help() {
+  async help() {
+    if (this.main.view.isCreating()) return
+
     console.log('this:\n', this)
     console.log('app:\n', this.main.app)
     console.log('canvas:\n', this.main.canvas)
@@ -127,7 +129,7 @@ class Keymap {
       this.register(['Alt'], 'arrowRight', this.nodeNavigation),
       this.register(['Alt'], 'arrowUp', this.nodeNavigation),
       this.register(['Alt'], 'arrowDown', this.nodeNavigation),
-      this.register([], 'h', this.help)
+      // this.register([], 'h', this.help)
     )
   }
 

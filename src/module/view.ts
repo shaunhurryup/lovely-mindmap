@@ -70,7 +70,7 @@ class View {
     this.main.canvas.selectOnly(node)
     this.main.canvas.zoomToSelection()
 
-    if (this.main.setting.autoFocus) {
+    if (this.main.config.autoFocus) {
       this.useCreation(node)
     }
   }

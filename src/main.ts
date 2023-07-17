@@ -1,17 +1,17 @@
-import {App, Plugin, PluginManifest} from 'obsidian'
+import {App, Plugin, PluginManifest, PluginSettingTab, Setting as ObsidianSetting } from 'obsidian'
 import {Keymap, Layout, Node, Setting, View} from './module'
 
 
 export default class LovelyMindmap extends Plugin{
   canvas: any = null
-  hotkeys2: any = []
   intervalTimer = new Map()
   node: Node
   keymap: Keymap
   view: View
   setting: Setting
   layout: Layout
-
+  // todo: move to setting
+  config: Record<keyof Setting, any>
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest)
@@ -37,7 +37,8 @@ export default class LovelyMindmap extends Plugin{
   }
 
   async onload() {
-    await this.loadSettings()
+    await this.setting.loadSettings()
+    this.addSettingTab(new Setting(this))
     this.keymap.registerAll()
     this.createCanvasInstance()
   }
@@ -45,13 +46,5 @@ export default class LovelyMindmap extends Plugin{
   onunload() {
     this.keymap.unregisterAll()
     this.intervalTimer.forEach(clearInterval)
-  }
-
-  async loadSettings() {
-    // this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
-  }
-
-  async saveSettings() {
-    // await this.saveData(this.settings)
   }
 }
