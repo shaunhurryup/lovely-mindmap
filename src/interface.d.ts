@@ -1,9 +1,8 @@
+/**
+ * This type definition on M is not official, just for my own convenience
+ */
 declare namespace M {
   type Position = [x: number, y: number]
-
-  interface MyPluginSettings {
-    mySetting: string;
-  }
 
   interface BBox {
     minX: number
