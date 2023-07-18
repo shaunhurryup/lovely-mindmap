@@ -17,6 +17,11 @@ jobs:
         with:
           node-version: "18.x"
 
+      - name: Build plugin
+        run: |
+          yarn
+          yarn build
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
