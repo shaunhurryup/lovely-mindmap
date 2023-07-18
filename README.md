@@ -127,16 +127,12 @@ If you think the project is lovely and enjoy creation, you can donate it~
 
 > [By Me a Coffee](https://www.buymeacoffee.com/xincan1949)
 
+支付宝
 
-<div style="display: flex; justify-content: center; gap: 66px">
-<div style="display: grid; gap: 4px">
-<span style="text-align: center;font-size: 14px;">支付宝</span>
-<img alt="Alipay" height="200" src="https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/Alipay.jpeg" title="123" width="200"/>
-</div>
-<dvi style="display: grid; gap: 4px">
-<span style="text-align: center;font-size: 14px;">微信</span>
+<img alt="Alipay" height="200" src="https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/Alipay.jpeg" width="200"/>
+
+
+微信
+
 <img alt="WeChatPay" height="200" src="https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/WeChatPay.png" title="123" width="200"/>
-</dvi>
-
-</div>
 
