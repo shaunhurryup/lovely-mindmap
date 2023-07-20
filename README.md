@@ -83,7 +83,7 @@ Woah!
 
 - [ ] Organize graph in a neat manner
 
-Woah!
+Woah! I have both flexibility and practicality!
 
 - [ ] Collision detection to avoid overlap
 
