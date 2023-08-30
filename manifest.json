@@ -1,7 +1,7 @@
 {
 	"id": "lovely-mindmap",
 	"name": "Lovely-Mindmap",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Build your own knowledge graph with smiles :-)",
 	"author": "shaun",
