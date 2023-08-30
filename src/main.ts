@@ -41,6 +41,20 @@ export default class LovelyMindmap extends Plugin{
     this.addSettingTab(new Setting(this))
     this.keymap.registerAll()
     this.createCanvasInstance()
+
+    // fixed: blur node doesn't work
+    // @see https://github.com/xincan1949/lovely-mindmap/issues/1#issue-1868166056
+    this.addCommand({
+      id: 'blurNode',
+      name: 'Blur node',
+      hotkeys: [
+        {
+          modifiers: ['Mod'],
+          key: 'Escape',
+        },
+      ],
+      checkCallback: () => this.keymap.blurNode(),
+    });
   }
 
   onunload() {

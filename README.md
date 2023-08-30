@@ -59,6 +59,8 @@ In Navigation view, `f` activate selection node and start editing.
 
 ## 🚧 TODO
 
+- [ ] Canvas should only be applied in active graph
+
 - [ ] Double `f` create node in the middle if no node in viewport
 
 Not sure
@@ -81,7 +83,7 @@ Woah!
 
 - [ ] Organize graph in a neat manner
 
-Woah!
+Woah! I have both flexibility and practicality!
 
 - [ ] Collision detection to avoid overlap
 
