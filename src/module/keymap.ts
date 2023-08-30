@@ -121,7 +121,6 @@ class Keymap {
   registerAll() {
     this.hotkeys.push(
       this.register([], 'f', this.focusNode),
-      this.register(['Meta'], 'Escape', this.blurNode),
       this.register([], 'Tab', this.main.node.createChildren),
       this.register([], 'enter', this.main.node.createSibNode),
       this.register(['Shift'], 'enter', this.main.node.createSibNode),

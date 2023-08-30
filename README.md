@@ -59,7 +59,7 @@ In Navigation view, `f` activate selection node and start editing.
 
 ## 🚧 TODO
 
-- [ ] Delete node by shortcut `Delete`
+- [ ] Canvas should only be applied in active graph
 
 - [ ] Double `f` create node in the middle if no node in viewport
 
