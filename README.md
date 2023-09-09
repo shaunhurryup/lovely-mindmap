@@ -10,7 +10,7 @@ We will continue to introduce new features!
 
 Feel free to leave feature suggestions but please don't open issues for bugs or support requests just yet.
 
-Any suggestion or question 👉 [Discord](https://discord.gg/DhJGeY8V)
+Any suggestion or question 👉 [Discord](https://discord.gg/gSdhPNeG)
 
 # 📕 Feature
 
