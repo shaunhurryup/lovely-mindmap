@@ -129,6 +129,8 @@ If you think the project is lovely and enjoy creation, you can donate it~
 
 > [By Me a Coffee](https://www.buymeacoffee.com/xincan1949)
 
+> 当您通过以下方式进行捐赠时，请务必留下姓名、GitHub 账号或其他社交媒体账号，以便我将其添加到捐赠者名单中，以表谢意。
+
 支付宝
 
 <img alt="Alipay" height="200" src="https://cdn.jsdelivr.net/gh/xincan1949/xincan1949.github.io@master/Alipay.jpeg" width="200"/>
